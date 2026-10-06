@@ -35,25 +35,24 @@ function closeModal(modalId) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const memberModal = document.getElementById('member-modal');
-  const closeMemberModalBtn = document.getElementById('close-member-modal');
   const memberForm = document.getElementById('member-form');
+  const closeMemberModalBtn = document.getElementById('close-member-modal');
 
-  // Намиране на бутона "Стани съмишленик"
-  // (Ако бутонът има специфичен ID, напр. id="btn-become-member", използвай него)
-  const openMemberModalBtns = document.querySelectorAll('.btn-primary[href="#membership"], #btn-become-member');
-
-  // Отваряне на модала при клик върху бутона
-  openMemberModalBtns.forEach(btn => {
+  // Отваряне на модала
+  document.querySelectorAll('a[href="#membership"], .btn-become-member').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      memberModal.classList.add('is-open');
-      memberModal.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden'; // Спира скрола на заден план
+      if (memberModal) {
+        memberModal.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+      }
     });
   });
 
   // Затваряне при клик върху хикса (X)
-  closeMemberModalBtn.addEventListener('click', closeModal);
+  if (closeMemberModalBtn) {
+    closeMemberModalBtn.addEventListener('click', closeModal);
+  }
 
   // Затваряне при клик извън модалния прозорец
   memberModal.addEventListener('click', (e) => {
@@ -69,25 +68,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+// Функция за затваряне
   function closeModal() {
-    memberModal.classList.remove('is-open');
-    memberModal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = ''; // Възстановява скрола
+    if (memberModal) {
+      memberModal.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
   }
 
-  // Обработка на изпращането на формата
-  memberForm.addEventListener('submit', (e) => {
-//    e.preventDefault();
+// Обработка на изпращането през FormSubmit
+  if (memberForm) {
+    memberForm.addEventListener('submit', async function (e) {
+    //      e.preventDefault(); // Спираме стандартната форма
 
-    // Вземане на данните от формата
-    const formData = new FormData(memberForm);
-    const data = Object.fromEntries(formData);
+        // Вземане на данните от формата
+        const formData = new FormData(memberForm);
+        const data = Object.fromEntries(formData);
 
-    console.log('Изпратени данни за членство:', data);
+        console.log('Изпратени данни за членство:', data);
 
-    // Тук може да се интегрира Formspree / EmailJS / custom backend
-    alert('Благодарим ви! Вашето заявление беше изпратено успешно.');
-    memberForm.reset();
-    closeModal();
-  });
+        // Тук може да се интегрира Formspree / EmailJS / custom backend
+        alert('Благодарим ви! Вашето заявление беше изпратено успешно.');
+    //    memberForm.reset();
+        closeModal();
+    });
+  }
 });

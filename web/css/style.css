@@ -17,3 +17,65 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #14b8a6;
 }
+
+/* Контейнер за бутоните */
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+
+/* Базови стилове за бутон */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.25s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+/* Primary бутон (Основно действие - Членство) */
+.btn-primary {
+  background-color: #0d9488; /* Изумрудено/Тюркоазено зелено */
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+}
+
+.btn-primary:hover {
+  background-color: #0f766e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.5);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary бутон (Вторично действие - Дарения) */
+.btn-secondary {
+  background-color: rgba(255, 255, 255, 0.08); /* Полупрозрачен тъмен фон */
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}

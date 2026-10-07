@@ -33,6 +33,7 @@ function closeModal(modalId) {
     }
 }
 
+// Функция за попълване на форма и записване на нови членове
 document.addEventListener('DOMContentLoaded', () => {
   const memberModal = document.getElementById('member-modal');
   const memberForm = document.getElementById('member-form');

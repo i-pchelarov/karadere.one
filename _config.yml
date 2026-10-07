@@ -1,0 +1,7 @@
+title: Природoсъобразно Карадере
+url: "https://karadere.one"
+
+# Изключваме файлове, които не трябва да се компилират
+exclude:
+  - README.md
+  - .gitignore

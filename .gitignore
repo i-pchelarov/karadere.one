@@ -3,3 +3,6 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+_site/
+.jekyll-cache/
+.jekyll-metadata

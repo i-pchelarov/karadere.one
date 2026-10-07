@@ -1,0 +1,50 @@
+<!-- Навигация -->
+<header class="fixed w-full z-50 bg-slate-950/90 backdrop-blur border-b border-slate-800">
+    <!-- Version -->
+    <span class="text-xs text-slate-300 font-mono">v0.2.1</span>
+
+    <!-- Menu -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500 flex items-center justify-center text-teal-400 group-hover:scale-105 transition-transform">
+                <i class="fa-solid font-bold fa-water text-xl"></i>
+            </div>
+            <div>
+                <span class="text-lg font-bold tracking-tight text-white block leading-none">Карадере</span>
+                <span class="text-xs text-teal-400 font-mono">karadere.one</span>
+            </div>
+        </a>
+
+        <!-- Десктоп меню -->
+        <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#about" class="hover:text-teal-400 transition-colors">За Карадере</a>
+            <a href="#principles" class="hover:text-teal-400 transition-colors">Принципи</a>
+            <a href="#causes" class="hover:text-teal-400 transition-colors">Каузи</a>
+            <a href="#join" class="hover:text-teal-400 transition-colors">Доброволчество</a>
+        </nav>
+
+        <div class="hidden md:flex items-center gap-4">
+            <button onclick="openDonateModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-amber-500/10 flex items-center gap-2">
+                <i class="fa-solid fa-heart"></i>
+                Дарение
+            </button>
+        </div>
+
+        <!-- Бутон за мобилно меню -->
+        <button id="mobile-menu-btn" class="md:hidden text-slate-300 hover:text-white text-2xl">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Мобилно меню падащо -->
+    <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-4 pb-6 space-y-4">
+        <a href="#about" class="block text-slate-300 hover:text-teal-400">За Карадере</a>
+        <a href="#principles" class="block text-slate-300 hover:text-teal-400">Принципи</a>
+        <a href="#causes" class="block text-slate-300 hover:text-teal-400">Каузи</a>
+        <a href="#join" class="block text-slate-300 hover:text-teal-400">Доброволчество</a>
+        <button onclick="openDonateModal()" class="w-full bg-amber-500 text-slate-950 font-semibold py-3 rounded-lg">
+            Подкрепи ни с дарение
+        </button>
+    </div>
+</header>

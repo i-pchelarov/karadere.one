@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="bg" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Природосъобразно Карадере | karadere.one</title>
+    <meta name="description" content="Сдружение за опазване на дивия плаж Карадере и насърчаване на свободен туризъм с нулев отпечатък.">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            sea: '#0d9488',
+                            teal: '#14b8a6',
+                            sand: '#fef3c7',
+                            accent: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome за икони -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Персонализиран стил -->
+    <link rel="stylesheet" href="web/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+<!-- Навигация -->
+<header class="fixed w-full z-50 bg-slate-950/90 backdrop-blur border-b border-slate-800">
+    <!-- Version -->
+    <span class="text-xs text-slate-300 font-mono">v0.2.0</span>
+
+    <!-- Menu -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500 flex items-center justify-center text-teal-400 group-hover:scale-105 transition-transform">
+                <i class="fa-solid font-bold fa-water text-xl"></i>
+            </div>
+            <div>
+                <span class="text-lg font-bold tracking-tight text-white block leading-none">Карадере</span>
+                <span class="text-xs text-teal-400 font-mono">karadere.one</span>
+            </div>
+        </a>
+
+        <!-- Десктоп меню -->
+        <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#about" class="hover:text-teal-400 transition-colors">За Карадере</a>
+            <a href="#principles" class="hover:text-teal-400 transition-colors">Принципи</a>
+            <a href="#causes" class="hover:text-teal-400 transition-colors">Каузи</a>
+            <a href="#join" class="hover:text-teal-400 transition-colors">Доброволчество</a>
+        </nav>
+
+        <div class="hidden md:flex items-center gap-4">
+            <button onclick="openDonateModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-amber-500/10 flex items-center gap-2">
+                <i class="fa-solid fa-heart"></i>
+                Дарение
+            </button>
+        </div>
+
+        <!-- Бутон за мобилно меню -->
+        <button id="mobile-menu-btn" class="md:hidden text-slate-300 hover:text-white text-2xl">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Мобилно меню падащо -->
+    <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-4 pb-6 space-y-4">
+        <a href="#about" class="block text-slate-300 hover:text-teal-400">За Карадере</a>
+        <a href="#principles" class="block text-slate-300 hover:text-teal-400">Принципи</a>
+        <a href="#causes" class="block text-slate-300 hover:text-teal-400">Каузи</a>
+        <a href="#join" class="block text-slate-300 hover:text-teal-400">Доброволчество</a>
+        <button onclick="openDonateModal()" class="w-full bg-amber-500 text-slate-950 font-semibold py-3 rounded-lg">
+            Подкрепи ни с дарение
+        </button>
+    </div>
+</header>
+
+<!-- Hero Секция -->
+<section class="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+    <div class="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-900/30 via-slate-950 to-slate-950"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-semibold uppercase tracking-wider mb-6">
+                <i class="fa-solid fa-leaf"></i> Сдружение „Природосъобразно Карадере“
+            </span>
+        <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight max-w-4xl mx-auto mb-6">
+            Да запазим чисто и свободно последното диво място на Българското Черноморие
+        </h1>
+        <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Защитаваме дюните, гората и морето на Карадере. Насърчаваме свободен туризъм с нулев отпечатък върху природата.
+        </p>
+
+        <!-- Call to Actions -->
+        <div class="hero-actions">
+            <!-- Primary CTA: Записване / Членство -->
+            <a href="#membership" class="btn btn-primary">
+<!--                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">-->
+<!--                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>-->
+<!--                    <circle cx="9" cy="7" r="4"/>-->
+<!--                    <line x1="19" y1="8" x2="19" y2="14"/>-->
+<!--                    <line x1="22" y1="11" x2="16" y2="11"/>-->
+<!--                </svg>-->
+                <i class="fa-solid fa-user-plus text-brand-dark"></i>
+                <span>Стани съмишленик</span>
+            </a>
+
+            <!-- Secondary CTA: Дарения / Подкрепа -->
+            <a href="#donate" class="btn btn-secondary" onclick="openDonateModal()">
+<!--                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">-->
+<!--                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>-->
+<!--                </svg>-->
+                <i class="fa-solid fa-hand-holding-dollar text-amber-400"></i>
+                <span>Подкрепи каузата</span>
+            </a>
+        </div>
+        <!-- CTA -->
+<!--        <i class="fa-solid fa-hand-holding-dollar text-amber-400"></i>-->
+<!--        <i class="fa-solid fa-user-plus"></i>-->
+<!--        onclick="openDonateModal()"-->
+    </div>
+</section>
+
+<!-- Секция: За нас / Статистика -->
+<section id="about" class="py-16 bg-slate-900/50 border-y border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-4xl font-extrabold text-teal-400 mb-2">4+ км</div>
+                <div class="text-slate-400 text-sm">Опазване непокътната плажна ивица и дюнни системи</div>
+            </div>
+            <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-4xl font-extrabold text-amber-400 mb-2">100%</div>
+                <div class="text-slate-400 text-sm">Доброволчески инициативи и граждански контрол</div>
+            </div>
+            <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-4xl font-extrabold text-teal-400 mb-2">0 следи</div>
+                <div class="text-slate-400 text-sm">Нашата цел за всеки къмпингуващ на Карадере</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Секция: Принципи на нулевия отпечатък -->
+<section id="principles" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <h2 class="text-3xl font-bold text-white mb-4">Етичен кодекс на Карадере</h2>
+            <p class="text-slate-400">Свободата да дивокъмпингуваш идва с отговорност към природата.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="p-8 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 transition-colors">
+                <div class="w-12 h-12 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-trash-arrow-up"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">Изнеси повече, отколкото си донесъл</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Не оставяй никакви отпадъци – включително органични. Почисти не само своя лагер, но и плажа около теб.
+                </p>
+            </div>
+            <div class="p-8 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 transition-colors">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-campground"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">Пази дюните и гората</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Палаткуването върху дюни разрушава редки растителни видове. Използвай обозначените или вече установени места.
+                </p>
+            </div>
+            <div class="p-8 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 transition-colors">
+                <div class="w-12 h-12 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">Безопасен огън</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Пали огън само на обезопасени места и използвай предимно газови котлони, за да избегнеш риска от горски пожари.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal: Стани съмишленик -->
+<div id="member-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-container" role="dialog" aria-labelledby="member-modal-title">
+
+        <!-- Бутон за затваряне -->
+        <button type="button" class="modal-close" id="close-member-modal" aria-label="Затвори">
+            &times;
+        </button>
+
+        <!-- Заглавие на модала -->
+        <div class="modal-header">
+            <h3 id="member-modal-title">Заявление за членство</h3>
+            <p>Стани част от Сдружение „Природосъобразно Карадере“ и помогни да запазим дивата природа.</p>
+        </div>
+
+        <!-- Форма за членство -->
+        <form id="member-form" class="modal-form" action="https://formsubmit.co/karadere.org@gmail.com" method="POST">
+
+            <div class="form-group">
+                <label for="member-name">Две имена *</label>
+                <input type="text" id="member-name" name="name" placeholder="Иван Иванов" required>
+            </div>
+
+            <div class="form-group">
+                <label for="member-email">Имейл адрес *</label>
+                <input type="email" id="member-email" name="email" placeholder="ivan@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="member-phone">Телефонен номер *</label>
+                <input type="tel" id="member-phone" name="phone" placeholder="+359 88 123 4567" required>
+            </div>
+
+            <!-- Декларация и съгласие с условията -->
+            <div class="form-checkbox-group">
+                <input type="checkbox" id="member-terms" name="terms" required>
+                <label for="member-terms">
+                    Запознат/а съм и приемам <a href="/terms.html" target="_blank" rel="noopener">Условията за членство</a> и <a href="/rules.html" target="_blank" rel="noopener">Правилника на сдружението</a>. *
+                </label>
+            </div>
+
+            <!-- Бутон за изпращане -->
+            <button type="submit" class="btn btn-primary btn-full">
+                Подай заявление
+            </button>
+
+            <p class="form-notice">
+                🔒 Вашите данни са защитени и ще бъдат използвани единствено за целите на Сдружението.
+            </p>
+        </form>
+
+    </div>
+</div>
+
+<!-- Модал за дарение -->
+<div id="donate-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-lg w-full relative">
+        <button onclick="closeModal('donate-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <h3 class="text-2xl font-bold text-white mb-2">Подкрепи Карадере</h3>
+        <p class="text-slate-400 text-sm mb-6">Даренията се използват за поддръжка на инфраструктура за отпадъци, мониторинг и правна защита.</p>
+
+        <div class="space-y-4 mb-6">
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                <span class="text-xs text-slate-500 block mb-1">Банкова сметка (IBAN)</span>
+                <code class="text-amber-400 font-mono text-sm block">BG00 UNCR 0000 0000 0000 00</code>
+                <span class="text-xs text-slate-400 mt-1 block">Сдружение „Природосъобразно Карадере“</span>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
+                <div>
+                    <span class="text-xs text-slate-500 block">Revolut / PayPal</span>
+                    <span class="text-sm font-semibold text-white">@karadere_one</span>
+                </div>
+                <i class="fa-solid fa-qrcode text-2xl text-teal-400"></i>
+            </div>
+        </div>
+
+        <button onclick="closeModal('donate-modal')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 rounded-xl transition-colors">
+            Затвори
+        </button>
+    </div>
+</div>
+
+<!-- Футър -->
+<footer class="bg-slate-950 border-t border-slate-900 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+            <span class="text-lg font-bold text-white block">Природосъобразно Карадере</span>
+            <span class="text-xs text-slate-500">Официален уебсайт: <a href="https://karadere.one" class="text-teal-400 hover:underline">karadere.one</a></span>
+        </div>
+        <div class="flex items-center gap-6 text-slate-400">
+            <a href="https://github.com/karadere-one" target="_blank" class="hover:text-white transition-colors">
+                <i class="fa-brands fa-github text-xl"></i>
+            </a>
+            <a href="#" class="hover:text-white transition-colors">
+                <i class="fa-brands fa-facebook text-xl"></i>
+            </a>
+        </div>
+        <div class="text-xs text-slate-600">
+            &copy; 2026 Сдружение „Природосъобразно Карадере“. Всички права запазени.
+        </div>
+    </div>
+</footer>
+
+<!-- Основен JS скрипт -->
+<script src="web/js/main.js"></script>
+</body>
+</html>

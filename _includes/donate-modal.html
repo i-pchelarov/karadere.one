@@ -1,0 +1,29 @@
+<!-- Модал за дарение -->
+<div id="donate-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-lg w-full relative">
+        <button onclick="closeModal('donate-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <h3 class="text-2xl font-bold text-white mb-2">Подкрепи Карадере</h3>
+        <p class="text-slate-400 text-sm mb-6">Даренията се използват за поддръжка на инфраструктура за отпадъци, мониторинг и правна защита.</p>
+
+        <div class="space-y-4 mb-6">
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                <span class="text-xs text-slate-500 block mb-1">Банкова сметка (IBAN)</span>
+                <code class="text-amber-400 font-mono text-sm block">BG00 UNCR 0000 0000 0000 00</code>
+                <span class="text-xs text-slate-400 mt-1 block">Сдружение „Природосъобразно Карадере“</span>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
+                <div>
+                    <span class="text-xs text-slate-500 block">Revolut / PayPal</span>
+                    <span class="text-sm font-semibold text-white">@karadere_one</span>
+                </div>
+                <i class="fa-solid fa-qrcode text-2xl text-teal-400"></i>
+            </div>
+        </div>
+
+        <button onclick="closeModal('donate-modal')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 rounded-xl transition-colors">
+            Затвори
+        </button>
+    </div>
+</div>

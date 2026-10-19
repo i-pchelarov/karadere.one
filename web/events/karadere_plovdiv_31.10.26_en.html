@@ -1,0 +1,222 @@
+---
+---
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karadere Brings Us Together | karadere.one</title>
+    <meta name="description" content="Karadere brings us together in Plovdiv on October 31, 2026.">
+
+    <!-- Tailwind CSS CDN -->
+    {% include tailwind-config.html %}
+
+    <!-- FontAwesome за икони -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Персонализиран стил -->
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+{% include header.html %}
+
+<main class="pt-20 pb-20">
+
+    <!-- Банер събитие - широка снимка -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div class="relative w-full aspect-[1200/500] max-h-[450px] overflow-hidden rounded-2xl border border-slate-800 shadow-2xl">
+            <img src="../img/event-banner-31.10.26.png" alt="Banner: Karadere Brings Us Together" class="w-full h-full object-cover object-center">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-400 text-xs font-mono uppercase tracking-wider mb-3 backdrop-blur-sm">
+                    <i class="fa-solid fa-calendar-day"></i> Upcoming Event
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+                    Karadere Brings Us Together
+                </h1>
+            </div>
+        </div>
+    </section>
+
+    <!-- Съдържание на събитието -->
+    <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-12">
+
+        <!-- Секция: Кога и къде -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur">
+            <h2 class="text-xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <i class="fa-solid fa-location-dot"></i> When and Where
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-300">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-calendar text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-slate-500 font-mono uppercase">Date and Time</span>
+                        <p class="font-semibold text-white">October 31, 2026 (Saturday)</p>
+                        <p class="text-sm text-slate-400">from 14:00 - FREE ENTRY</p>
+                    </div>
+                </div>
+
+                <a href="https://maps.app.goo.gl/TpjuQJQsuZ8uNUN86" target="_blank"
+                   rel="noopener noreferrer"
+                   class="flex items-start gap-4 p-3 -m-3 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700/80 transition-all group">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-map-pin text-lg"></i>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-slate-500 font-mono uppercase">Location</span>
+                            <p class="font-semibold text-white">Plovdiv</p>
+                            <p class="text-sm text-slate-400">Youth Hill - Plovdiv Stage Park</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Секция: Описание -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-align-left text-teal-400"></i>Why
+            </h2>
+            <p class="text-slate-300 leading-relaxed">
+                Some places hold a piece of who we are.
+                Karadere is one of them: tents under the stars, campfires, music, strangers becoming friends, conversations until sunrise.
+            </p>
+            <p class="text-slate-300 leading-relaxed">
+                But what happens if one day we return and all of this is forbidden?
+                We don't want to wait for that day. Wild camping is a right passed down from our ancestors, and it must remain ours.
+            </p>
+            <p class="text-slate-300 leading-relaxed">
+                On the eve of <strong>National Awakeners' Day</strong>, we gather not to protest, but to see each other, listen to one another, and to turn the Karadere community into something bigger: a community that is awake, connected, and ready to act.
+            </p>
+        </section>
+
+        <!-- 2. Втора снимка (Първа между абзаците) -->
+        <div class="relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl my-8">
+            <img src="../img/event-1-31.10.26.png" alt="Morning on the beach"
+                 class="w-full h-72 sm:h-96 object-cover">
+            <span class="absolute bottom-3 left-3 text-xs font-mono text-slate-300 bg-slate-950/80 px-3 py-1 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-camera text-teal-400 mr-1.5"></i> Morning on the beach
+            </span>
+        </div>
+
+        <!-- Секция: Участници -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-users text-amber-400"></i> Participants
+            </h2>
+
+            <p class="text-slate-300 leading-relaxed">
+                The music stage is an open space featuring acoustic sets by:
+            </p>
+
+            <ul class="space-y-2">
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-drum"></i>
+                    </div>
+                    <span class="font-semibold text-white">Orkestar na tyasno</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-microphone-lines"></i>
+                    </div>
+                    <span class="font-semibold text-white">Chuvame se</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                    <span class="font-semibold text-white">Yan from "Neshto tsvetno"</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-wave-square"></i>
+                    </div>
+                    <span class="font-semibold text-white">Bas Naroden</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-400 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-slate-900 text-slate-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <span class="italic">And more surprises on site...</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- 3. Трета снимка (Втора между абзаците) -->
+        <div class="relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl my-8">
+            <img src="../img/event-2-31.10.26.png" alt="Butterfly"
+                 class="w-full h-72 sm:h-96 object-cover">
+            <span class="absolute bottom-3 left-3 text-xs font-mono text-slate-300 bg-slate-950/80 px-3 py-1 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-camera text-amber-400 mr-1.5"></i> Butterfly
+            </span>
+        </div>
+
+        <!-- Секция: Съдържание -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-list-check text-teal-400"></i> What to Expect
+            </h2>
+            <div class="space-y-3 text-slate-300 leading-relaxed">
+                <p>No set schedule, no strict script. Bring whatever you have:</p>
+
+                <ul class="space-y-2 pl-1">
+                    <li class="flex items-center gap-3">
+                        <i class="fa-solid text-teal-400 fa-wand-magic-sparkles text-xs"></i>
+                        <strong class="font-bold text-white">Talent and good vibes:</strong> music, drawing, henna, braids, massage, Tarot reading, or simply good conversation
+                    </li>
+
+                    <li class="flex items-center gap-3">
+                        <i class="fa-solid text-amber-400 fa-utensils text-xs"></i>
+                        <strong class="font-bold text-white">Shared Table:</strong> homemade food prepared with love in support of the cause
+                    </li>
+
+                    <li class="flex items-center gap-3">
+                        <i class="fa-solid text-teal-400 fa-recycle text-xs"></i>
+                        <strong class="font-bold text-white">Charity Bazaar:</strong> clothes, camping gear, and items looking for a new life
+                    </li>
+                </ul>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+                Come with your friends, bring an instrument, an idea, or just yourself.
+                Because nature doesn't protect itself. And because we are its voice.
+            </p>
+        </section>
+
+        <!-- Заключителна акцентна секция -->
+        <section
+                class="bg-gradient-to-br from-teal-950/40 via-slate-900 to-slate-900 border border-teal-500/30 rounded-2xl p-8 text-center space-y-4 my-12 shadow-2xl relative overflow-hidden">
+            <!-- Фоново сияние -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Текст и послание -->
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Together for Karadere. <span class="text-teal-400">So we always have a place to return to.</span>
+            </h3>
+
+            <!-- Значка ВХОД СВОБОДЕН -->
+            <div class="pt-2">
+                <span class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 text-sm font-bold uppercase tracking-wider shadow-lg shadow-amber-500/5">
+                    <i class="fa-solid fa-ticket"></i> Free Entry
+                </span>
+            </div>
+        </section>
+    </article>
+</main>
+
+{% include footer.html %}
+
+<!-- Основен JS скрипт -->
+<script src="web/js/main.js"></script>
+</body>
+</html>

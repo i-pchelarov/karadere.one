@@ -9,31 +9,14 @@
     <meta name="description" content="Сдружение за опазване на дивия плаж Карадере и насърчаване на свободен туризъм с нулев отпечатък.">
 
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    {% include tailwind-config.html %}
+
     <!-- FontAwesome за икони -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Брандова икона -->
     <link rel="icon" type="image/svg+xml" href="./web/favicon.svg">
     <!-- Персонализиран стил -->
     <link rel="stylesheet" href="web/css/style.css">
-    <!-- Брандирана тема за цветове -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            dark: '#0f172a',
-                            sea: '#0d9488',
-                            teal: '#14b8a6',
-                            sand: '#fef3c7',
-                            accent: '#f59e0b'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
 

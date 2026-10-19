@@ -1,0 +1,265 @@
+---
+---
+<!DOCTYPE html>
+<html lang="bg" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карадере ни събира | karadere.one</title>
+    <meta name="description" content="Карадере ни събира заедно в Пловдив на 31.10.2026 г.">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            sea: '#0d9488',
+                            teal: '#14b8a6',
+                            sand: '#fef3c7',
+                            accent: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome за икони -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Персонализиран стил -->
+    <link rel="stylesheet" href="web/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+{% include header.html %}
+
+<main class="pt-20 pb-20">
+
+    <!-- 1. Широка снимка "Знаме" (Banner/Hero Image) -->
+    <section class="relative w-full h-80 sm:h-[450px] overflow-hidden border-b border-slate-800">
+        <!--        <img src="/web/img/event-banner-31.10.26.png" alt="Банер: Карадере ни събира" class="w-full h-full object-cover">-->
+        <img src="/web/img/event-banner-31.10.26.png" alt="Банер: Карадере ни събира" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+
+        <div class="absolute bottom-0 left-0 right-0 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-400 text-xs font-mono uppercase tracking-wider mb-3 backdrop-blur-sm">
+                <i class="fa-solid fa-calendar-day"></i> Предстоящо събитие
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+                Карадере ни събира
+            </h1>
+        </div>
+    </section>
+
+    <!-- Съдържание на събитието -->
+    <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-12">
+
+        <!-- Секция: Кога и къде -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur">
+            <h2 class="text-xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <i class="fa-solid fa-location-dot"></i> Кога и къде
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-300">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-calendar text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-slate-500 font-mono uppercase">Дата и час</span>
+                        <p class="font-semibold text-white">31 Октомври 2026 г. (Събота)</p>
+                        <p class="text-sm text-slate-400">от 14:00 часа - ВХОД СВОБОДЕН</p>
+                    </div>
+                </div>
+
+                <a href="https://maps.app.goo.gl/iZL738m1HvZjAnDo6" target="_blank"
+                   rel="noopener noreferrer"
+                   class="flex items-start gap-4 p-3 -m-3 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700/80 transition-all group">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-map-pin text-lg"></i>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-slate-500 font-mono uppercase">Локация</span>
+                            <p class="font-semibold text-white">гр. Пловдив</p>
+                            <p class="text-sm text-slate-400">Върха на Младежки хълм - Джендем тепе</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Секция: Описание -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-align-left text-teal-400"></i>Защо
+            </h2>
+            <p class="text-slate-300 leading-relaxed">
+                Има места, които носят нещо от нас самите.
+                Карадере е едно от тях: палатки под звездите, огън, музика, непознати, които стават приятели, разговори
+                до изгрев.
+            </p>
+            <p class="text-slate-300 leading-relaxed">
+                Но какво ще стане, ако един ден се върнем и всичко това е забранено?
+                Не искаме да чакаме този ден. Дивото бивакуване е право, което носим от предците си, и трябва да остане
+                наше.
+            </p>
+            <p>
+                В навечерието на <strong>Деня на будителите</strong> се събираме не за да протестираме, а за да се
+                видим, да се чуем и да направим от общността на Дерето нещо по-голямо: будно, свързано и действащо.
+            </p>
+        </section>
+
+        <!-- 2. Втора снимка (Първа между абзаците) -->
+        <div class="relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl my-8">
+            <!--            <img src="web/img/event-plovdiv-1.jpg" alt="[Описание на снимката]"-->
+            <!--                 class="w-full h-72 sm:h-96 object-cover">-->
+            <img src="/web/img/event-1-31.10.26.png" alt="Утро на плажа"
+                 class="w-full h-72 sm:h-96 object-cover">
+            <span class="absolute bottom-3 left-3 text-xs font-mono text-slate-300 bg-slate-950/80 px-3 py-1 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-camera text-teal-400 mr-1.5"></i> Утро на плажа
+            </span>
+        </div>
+
+        <!-- Секция: Участници -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-users text-amber-400"></i> Участници
+            </h2>
+
+            <p class="text-slate-300 leading-relaxed">
+                Музикалната сцена е свободна с акустични сетове от:
+            </p>
+
+            <ul class="space-y-2">
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-drum"></i>
+                    </div>
+                    <span class="font-semibold text-white">Оркестър на тясно</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-microphone-lines"></i>
+                    </div>
+                    <span class="font-semibold text-white">Чуваме се</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                    <span class="font-semibold text-white">Ян от „Нещо цветно“</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-200 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-wave-square"></i>
+                    </div>
+                    <span class="font-semibold text-white">Бас Народен</span>
+                </li>
+
+                <li class="flex items-center gap-3 text-slate-400 py-2">
+                    <div class="w-9 h-9 rounded-lg bg-slate-900 text-slate-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <span class="italic">И още изненади на място...</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- 3. Трета снимка (Втора между абзаците) -->
+        <div class="relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl my-8">
+            <img src="/web/img/event-2-31.10.26.png" alt="Пеперуда"
+                 class="w-full h-72 sm:h-96 object-cover">
+            <span class="absolute bottom-3 left-3 text-xs font-mono text-slate-300 bg-slate-950/80 px-3 py-1 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-camera text-amber-400 mr-1.5"></i> Пеперуда
+            </span>
+        </div>
+
+        <!-- Секция: Съдържание -->
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-list-check text-teal-400"></i> Съдържание
+            </h2>
+            <div class="space-y-3 text-slate-300 leading-relaxed">
+                <p>Без програма, без сценарий. Идваш с каквото имаш:</p>
+<!--                <ul class="list-disc list-inside space-y-1.5 pl-2">-->
+<!--                    <li><strong class="font-bold text-white">Талант и дух:</strong> музика, рисунка, къна, плитки,-->
+<!--                        масаж, Таро или просто добър разговор-->
+<!--                    </li>-->
+<!--                    <li><strong class="font-bold text-white">Споделена трапеза:</strong> домашна храна, приготвена с-->
+<!--                        любов, за каузата-->
+<!--                    </li>-->
+<!--                    <li><strong class="font-bold text-white">Базар с добро сърце:</strong> дрехи, къмпинг екипировка и-->
+<!--                        вещи, които търсят нов живот-->
+<!--                    </li>-->
+<!--                </ul>-->
+
+                <ul class="space-y-2 pl-1">
+                    <li class="flex items-center gap-3">
+<!--                        <div class="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 mt-0.5">-->
+                            <i class="fa-solid text-teal-400 fa-wand-magic-sparkles text-xs"></i>
+<!--                        </div>-->
+<!--                        <div>-->
+                            <strong class="font-bold text-white">Талант и дух:</strong> музика, рисунка, къна, плитки, масаж, Таро или просто добър разговор
+<!--                        </div>-->
+                    </li>
+
+                    <li class="flex items-center gap-3">
+<!--                        <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">-->
+                            <i class="fa-solid text-amber-400 fa-utensils text-xs"></i>
+<!--                        </div>-->
+<!--                        <div>-->
+                            <strong class="font-bold text-white">Споделена трапеза:</strong> домашна храна, приготвена с любов, за каузата
+<!--                        </div>-->
+                    </li>
+
+                    <li class="flex items-center gap-3">
+<!--                        <div class="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 mt-0.5">-->
+                            <i class="fa-solid text-teal-400 fa-recycle text-xs"></i>
+<!--                        </div>-->
+<!--                        <div>-->
+                            <strong class="font-bold text-white">Базар с добро сърце:</strong> дрехи, къмпинг екипировка и вещи, които търсят нов живот
+<!--                        </div>-->
+                    </li>
+                </ul>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+                Ела със свои хора, с инструмент, с идея или само със себе си.
+                Защото природата не се пази сама. И защото ние сме нейния глас.
+            </p>
+        </section>
+
+        <!-- Заключителна акцентна секция -->
+        <section class="bg-gradient-to-br from-teal-950/40 via-slate-900 to-slate-900 border border-teal-500/30 rounded-2xl p-8 text-center space-y-4 my-12 shadow-2xl relative overflow-hidden">
+            <!-- Фоново сияние -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Текст и послание -->
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Заедно за Карадере. <span class="text-teal-400">За да има къде да се върнем.</span>
+            </h3>
+
+            <!-- Значка ВХОД СВОБОДЕН -->
+            <div class="pt-2">
+        <span class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 text-sm font-bold uppercase tracking-wider shadow-lg shadow-amber-500/5">
+            <i class="fa-solid fa-ticket"></i> Вход свободен
+        </span>
+            </div>
+        </section>
+    </article>
+</main>
+
+{% include footer.html %}
+
+<!-- Основен JS скрипт -->
+<script src="web/js/main.js"></script>
+</body>
+</html>

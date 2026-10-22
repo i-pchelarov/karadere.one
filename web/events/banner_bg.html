@@ -16,6 +16,23 @@
     <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <!-- Custom style за специфични фонове/шрифтове -->
     <link rel="stylesheet" href="../css/style.css">
+
+    <!-- Google Fonts с гарантирана поддръжка на Кирилица (cyrillic) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pangolin&display=swap" rel="stylesheet">
+
+    <style>
+        .font-graffiti {
+            font-family: 'Pangolin', cursive, sans-serif;
+        }
+
+        /* Ръчно нарисувана асиметрична дъга / четка */
+        .hand-stroke {
+            border-radius: 225px 15px 255px 15px/15px 225px 15px 255px;
+        }
+
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased min-h-screen flex items-center justify-center p-4">
 
@@ -58,34 +75,8 @@
     <!-- Долен блок: Участници, After Party & Домейн -->
     <div class="relative z-10 space-y-4 pt-2">
 
-        <!-- Списък с участници на полупрозрачен подложка -->
-        <div>
-            <p class="text-xs font-mono uppercase text-slate-300 tracking-wider mb-2 drop-shadow">
-                <i class="fa-solid fa-music text-amber-400 mr-1.5"></i> С участието на:
-            </p>
-
-            <div class="flex flex-wrap gap-2 text-xs sm:text-sm">
-    <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-white font-medium shadow">
-        Оркестър на тясно
-    </span>
-                <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-white font-medium shadow">
-        Чуваме се
-    </span>
-                <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-white font-medium shadow">
-        Aiya Rose
-    </span>
-                <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-white font-medium shadow">
-        Ян от „Нещо цветно“
-    </span>
-                <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-white font-medium shadow">
-        Бас Народен
-    </span>
-                <span class="px-3 py-1.5 rounded-xl bg-slate-950/75 border border-slate-700/80 backdrop-blur-md text-slate-300 font-medium shadow">
-        Още - ТБС
-    </span>
-            </div>
-
-        </div>
+        <!-- Списък с участници на полупрозрачна подложка -->
+        {% include graffiti_bg.html %}
 
         <!-- Долна лента: After Party & Домейн -->
         <div class="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">

@@ -31,64 +31,92 @@
         .hand-stroke {
             border-radius: 225px 15px 255px 15px/15px 225px 15px 255px;
         }
-
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased min-h-screen flex items-center justify-center p-4">
 
-<!-- Банер контейнер (Аспект 1200x630) -->
-<div class="relative w-full max-w-5xl aspect-[1200/630] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col justify-between p-6 sm:p-10 bg-slate-900">
+<!-- Банер контейнер -->
+<!-- Респонсив банер контейнер: на мобилни е с по-високо съотношение (или минимална височина), а на десктоп става 1200x630 -->
+<div class="relative w-full max-w-5xl h-auto min-h-[580px] sm:min-h-0 sm:aspect-[1200/630] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col justify-between p-4 sm:p-8 bg-slate-900">
 
     <!-- Фонов образ с акцент върху изгрева -->
-    <img src="../img/event-banner-31.10.26.png" alt="Карадере ни събира" class="absolute inset-0 w-full h-full object-cover object-center">
+    <img src="../img/event-banner-31.10.26.png" alt="Карадере ни събира"
+         class="absolute inset-0 w-full h-full object-cover object-center">
 
     <!-- Градиенти САМО горе и долу, за да остане средата с изгрева светла и прозрачна -->
     <div class="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-slate-950/90 pointer-events-none"></div>
 
-    <!-- Горен блок: Статус и Вход Свободен -->
-    <div class="relative z-10 flex items-center justify-between gap-4">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/60 border border-teal-500/40 text-teal-400 text-xs sm:text-sm font-mono uppercase tracking-wider backdrop-blur-md shadow-lg">
-            <i class="fa-solid fa-tree-city"></i> Пловдив за Карадере
+    <a href="http://karadere.one/events.html" target="_blank">
+
+        <!-- Горен блок: Статус и Вход Свободен -->
+        <div class="relative z-10 flex items-center justify-between gap-2 mb-3">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/60 border border-teal-500/40 text-teal-400 text-xs sm:text-sm font-mono uppercase tracking-wider backdrop-blur-md shadow-lg">
+                <i class="fa-solid fa-tree-city"></i> Пловдив за Карадере
+            </div>
+
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/60 text-amber-300 text-xs sm:text-sm font-bold uppercase tracking-wider backdrop-blur-md shadow-lg shadow-amber-500/10">
+                <i class="fa-solid fa-ticket"></i> Вход свободен
+            </div>
         </div>
 
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/60 text-amber-300 text-xs sm:text-sm font-bold uppercase tracking-wider backdrop-blur-md shadow-lg shadow-amber-500/10">
-            <i class="fa-solid fa-ticket"></i> Вход свободен
-        </div>
-    </div>
+        <!-- Централен блок: Заглавие & Кога/Къде -->
+        <div class="relative z-10 space-y-3 my-2">
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+                Карадере ни събира
+            </h1>
 
-    <!-- Централен блок: Заглавие & Кога/Къде -->
-    <div class="relative z-10 space-y-3 my-auto">
-        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
-            Карадере ни събира
-        </h1>
-
-        <div class="inline-flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 backdrop-blur-md text-slate-100 text-sm sm:text-base font-semibold shadow-lg">
+            <div class="inline-flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 backdrop-blur-md text-slate-100 text-sm sm:text-base font-semibold shadow-lg">
                 <span class="flex items-center gap-2 text-teal-400">
                     <i class="fa-solid fa-calendar-day"></i> 31 Октомври 2026 г. 14:00 часа
                 </span>
                 <span class="flex items-center gap-2 text-teal-400">
                     <i class="fa-solid fa-location-dot"></i> Пловдив - Младежки хълм
                 </span>
+            </div>
         </div>
-    </div>
-
+    </a>
     <!-- Долен блок: Участници, After Party & Домейн -->
     <div class="relative z-10 space-y-4 pt-2">
 
+        <a href="http://karadere.one/events.html" target="_blank">
         <!-- Списък с участници на полупрозрачна подложка -->
         {% include graffiti_bg.html %}
+        </a>
 
-        <!-- Долна лента: After Party & Домейн -->
-        <div class="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
-            <div class="flex items-center gap-2.5 text-amber-300 font-semibold bg-slate-950/80 px-3.5 py-1.5 rounded-xl border border-amber-500/30 backdrop-blur-md shadow">
+        <!-- Долна лента: After Party & Домейн / QR -->
+        <div class="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+
+            <!-- Ляво: After Party -->
+            <div class="flex items-center gap-2 px-3 py-1.5 text-amber-300 font-semibold bg-slate-950/80 rounded-xl border border-amber-500/30 backdrop-blur-md shadow">
                 <i class="fa-solid fa-martini-glass-citrus text-amber-400 animate-pulse"></i>
                 <span>After Party: <strong class="text-white">Club Al Capone</strong></span>
             </div>
 
-            <div class="font-mono text-slate-300 flex items-center gap-2 bg-slate-950/60 px-3 py-1 rounded-lg backdrop-blur-md">
-                <i class="fa-solid fa-globe text-teal-400"></i>
-                <span class="text-white font-bold">karadere.one</span>
+            <!-- Дясно (на десктоп) / Долу (на мобилен): Домейн, Фейсбук и QR код -->
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+
+                <!-- Домейн бутон -->
+                <a href="http://karadere.one" target="_blank"
+                   class="font-mono text-slate-300 flex items-center gap-1.5 px-3 py-1 bg-slate-950/70 rounded-lg backdrop-blur-md hover:text-white transition-colors border border-slate-800">
+                    <i class="fa-solid fa-globe text-teal-400"></i>
+                    <span class="text-white font-bold">karadere.one</span>
+                </a>
+
+                <!-- Фейсбук и QR код група -->
+                <div class="flex items-center gap-2 px-2 py-1 bg-slate-950/70 rounded-lg backdrop-blur-md border border-slate-800">
+                    <a href="https://fb.me/e/7lneUV7mb" target="_blank"
+                       class="text-teal-400 hover:text-white transition-colors p-1" title="Facebook събитие">
+                        <i class="fa-brands fa-facebook text-lg"></i>
+                    </a>
+                    <a href="https://fb.me/e/7lneUV7mb" target="_blank"
+                       class="block overflow-hidden rounded-md border border-slate-700/60 hover:opacity-90 transition-opacity">
+                        <img src="../img/event-qr-31.10.26.png" alt="QR Code" width="48" height="48"
+                             class="w-12 h-12 object-cover"/>
+                    </a>
+                </div>
+
             </div>
+
         </div>
 
     </div>

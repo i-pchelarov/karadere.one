@@ -19,8 +19,15 @@ const DIMENSIONS = 768;
 // --- hybrid tuning (override via environment) -------------------------------
 const VECTOR_THRESHOLD = num("RAG_VECTOR_THRESHOLD", 0.2);
 const WEAK_TOP_SIMILARITY = num("RAG_HYBRID_WEAK_TOP", 0.38);
+// A similarity this low is never a confident answer, however many hits there
+// are. Below it the keyword path is always consulted.
+const CONFIDENT_TOP_SIMILARITY = num("RAG_HYBRID_CONFIDENT_TOP", 0.62);
 const WEAK_MIN_HITS = num("RAG_HYBRID_MIN_HITS", 2);
 const KEYWORD_FETCH_FACTOR = num("RAG_HYBRID_FETCH_FACTOR", 4);
+// Floor for the keyword candidate set. PostgREST returns rows in arbitrary
+// order, so truncating before ranking lets row order decide the answer; fetch a
+// generous set, rank locally, then trim.
+const KEYWORD_FETCH_LIMIT = num("RAG_HYBRID_FETCH_LIMIT", 200);
 const MAX_TERMS = num("RAG_HYBRID_MAX_TERMS", 8);
 const MIN_TERM_LEN = num("RAG_HYBRID_MIN_TERM_LEN", 3);
 
@@ -55,7 +62,33 @@ const ENGLISH_STOPWORDS = new Set([
 ]);
 
 const STOPWORDS = new Set([...BULGARIAN_STOPWORDS, ...ENGLISH_STOPWORDS]);
+
+// Legal synonyms: the question is phrased in everyday language, the statute in
+// legal language. Expanding the query with these terms fixes both retrieval
+// paths at once -- the embedding points at the camping provisions, and the
+// keyword fallback searches for the words the law actually uses.
+const LEGAL_SYNONYMS = {
+  "лагеруване": ["палатки", "кемпери", "каравани", "преместваеми обекти"],
+  "лагерувам": ["палатки", "кемпери", "каравани"],
+  "палатка": ["палатки", "кемпери", "каравани"],
+  "плаж": ["морски плажове", "извън територията на морските плажове"],
+  "плажа": ["морски плажове", "извън територията на морските плажове"],
+  "плажове": ["морски плажове"],
+};
+
 const WORD_RE = /[0-9a-zA-Z\u0400-\u04FF]+/g;
+
+function expandQuestion(question) {
+  // Append legal synonyms for any trigger word found in the question. Returns
+  // the question unchanged when no trigger matches.
+  const lowered = question.toLowerCase();
+  const extra = [];
+  for (const [trigger, synonyms] of Object.entries(LEGAL_SYNONYMS)) {
+    if (lowered.includes(trigger)) extra.push(...synonyms);
+  }
+  if (extra.length === 0) return question;
+  return `${question} ${[...new Set(extra)].join(" ")}`;
+}
 
 function num(name, fallback) {
   const v = process.env[name];
@@ -168,7 +201,7 @@ async function keywordSearch(terms, count) {
   const params = new URLSearchParams({
     or: `(${clauses.join(",")})`,
     select: "id,document_id,title,content,metadata",
-    limit: String(Math.max(count * KEYWORD_FETCH_FACTOR, count)),
+    limit: String(Math.max(count * KEYWORD_FETCH_FACTOR, KEYWORD_FETCH_LIMIT)),
   });
   const url = `${supabaseBase()}/document_sections?${params.toString()}`;
   const resp = await fetch(url, { headers: supabaseHeaders(key) });
@@ -199,6 +232,12 @@ async function keywordSearch(terms, count) {
 function vectorIsWeak(hits, count) {
   if (hits.length === 0) return [true, "no vector hits"];
   const top = Math.max(...hits.map((h) => h.similarity ?? 0));
+  if (top < CONFIDENT_TOP_SIMILARITY) {
+    return [
+      true,
+      `top similarity ${top.toFixed(3)} < confident ${CONFIDENT_TOP_SIMILARITY.toFixed(2)}`,
+    ];
+  }
   if (top < WEAK_TOP_SIMILARITY) {
     return [true, `top similarity ${top.toFixed(3)} < ${WEAK_TOP_SIMILARITY.toFixed(2)}`];
   }
@@ -211,6 +250,46 @@ function vectorIsWeak(hits, count) {
 
 function annotate(hits, source) {
   return hits.map((h) => ({ ...h, matched_by: source }));
+}
+
+// Single source of truth for the orchestration: the CLI entry point below
+// calls this, mirroring run_query() in rag_query.py.
+async function runQuery(question, count = 5, mode = "auto") {
+  const trace = { question, mode, match_count: count };
+  let hits;
+
+  const expanded = expandQuestion(question);
+  if (expanded !== question) trace.expanded = expanded;
+
+  if (mode === "keyword") {
+    const terms = extractTerms(expanded);
+    trace.terms = terms;
+    hits = annotate(await keywordSearch(terms, count), "keyword");
+    trace.path = "keyword";
+  } else {
+    const vec = await embed(expanded);
+    hits = annotate(await rpcMatch(vec, VECTOR_THRESHOLD, count), "vector");
+    const [weak, why] = vectorIsWeak(hits, count);
+    trace.vector_state = why;
+    if (mode === "vector" || !weak) {
+      trace.path = "vector";
+    } else {
+      const terms = extractTerms(expanded);
+      trace.terms = terms;
+      const fallback = annotate(await keywordSearch(terms, count), "keyword");
+      trace.path = hits.length > 0 ? "vector+keyword" : "keyword";
+      trace.fallback_hits = fallback.length;
+      // The vector result is weak, so the keyword hits -- which matched actual
+      // query terms -- lead. Vector hits fill any remaining slots. (Appending
+      // them after the vector hits would let the weak vector result fill the
+      // quota and silently drop the fallback.)
+      const seen = new Set(fallback.map((h) => h.id));
+      hits = [...fallback, ...hits.filter((h) => !seen.has(h.id))].slice(0, count);
+    }
+  }
+
+  trace.returned = hits.length;
+  return { trace, hits };
 }
 
 function parseArgs(argv) {
@@ -237,31 +316,5 @@ if (positional.length === 0 || !["auto", "vector", "keyword"].includes(mode)) {
 const question = positional[0];
 const count = positional[1] ? parseInt(positional[1], 10) : 5;
 
-const trace = { question, mode, match_count: count };
-let hits;
-
-if (mode === "keyword") {
-  const terms = extractTerms(question);
-  trace.terms = terms;
-  hits = annotate(await keywordSearch(terms, count), "keyword");
-  trace.path = "keyword";
-} else {
-  const vec = await embed(question);
-  hits = annotate(await rpcMatch(vec, VECTOR_THRESHOLD, count), "vector");
-  const [weak, why] = vectorIsWeak(hits, count);
-  trace.vector_state = why;
-  if (mode === "vector" || !weak) {
-    trace.path = "vector";
-  } else {
-    const terms = extractTerms(question);
-    trace.terms = terms;
-    const fallback = annotate(await keywordSearch(terms, count), "keyword");
-    trace.path = hits.length > 0 ? "vector+keyword" : "keyword";
-    trace.fallback_hits = fallback.length;
-    const seen = new Set(hits.map((h) => h.id));
-    hits = [...hits, ...fallback.filter((h) => !seen.has(h.id))].slice(0, count);
-  }
-}
-
-trace.returned = hits.length;
+const { trace, hits } = await runQuery(question, count, mode);
 console.log(JSON.stringify({ trace, results: hits }, null, 2));

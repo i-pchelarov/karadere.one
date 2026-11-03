@@ -37,10 +37,19 @@ DIMENSIONS = 768
 VECTOR_THRESHOLD = float(os.environ.get("RAG_VECTOR_THRESHOLD", "0.20"))
 # Below this top similarity the vector result is considered weak.
 WEAK_TOP_SIMILARITY = float(os.environ.get("RAG_HYBRID_WEAK_TOP", "0.38"))
+# A similarity this low is never a confident answer, however many hits there
+# are. Below it the keyword path is always consulted.
+CONFIDENT_TOP_SIMILARITY = float(
+    os.environ.get("RAG_HYBRID_CONFIDENT_TOP", "0.62")
+)
 # Minimum number of vector hits before the result counts as well covered.
 WEAK_MIN_HITS = int(os.environ.get("RAG_HYBRID_MIN_HITS", "2"))
 # How many rows to pull for keyword ranking before trimming to match_count.
 KEYWORD_FETCH_FACTOR = int(os.environ.get("RAG_HYBRID_FETCH_FACTOR", "4"))
+# Floor for the keyword candidate set. PostgREST returns rows in arbitrary
+# order, so truncating before ranking lets row order decide the answer; fetch a
+# generous set, rank locally, then trim.
+KEYWORD_FETCH_LIMIT = int(os.environ.get("RAG_HYBRID_FETCH_LIMIT", "200"))
 # Max distinct keyword terms used in the OR filter.
 MAX_TERMS = int(os.environ.get("RAG_HYBRID_MAX_TERMS", "8"))
 # Shortest keyword term worth querying for.
@@ -78,7 +87,36 @@ ENGLISH_STOPWORDS = {
 
 STOPWORDS = BULGARIAN_STOPWORDS | ENGLISH_STOPWORDS
 
+# Legal synonyms: the question is phrased in everyday language, the statute in
+# legal language. Expanding the query with these terms fixes both retrieval
+# paths at once -- the embedding points at the camping provisions, and the
+# keyword fallback searches for the words the law actually uses.
+LEGAL_SYNONYMS = {
+    "лагеруване": ("палатки", "кемпери", "каравани", "преместваеми обекти"),
+    "лагерувам": ("палатки", "кемпери", "каравани"),
+    "палатка": ("палатки", "кемпери", "каравани"),
+    "плаж": ("морски плажове", "извън територията на морските плажове"),
+    "плажа": ("морски плажове", "извън територията на морските плажове"),
+    "плажове": ("морски плажове",),
+}
+
 WORD_RE = re.compile(r"[0-9a-zA-Z\u0400-\u04FF]+")
+
+
+def expand_question(question):
+    """Append legal synonyms for any trigger word found in the question.
+
+    Returns the question unchanged when no trigger matches, so callers can
+    detect a no-op by comparing strings.
+    """
+    lowered = question.lower()
+    extra = []
+    for trigger, synonyms in LEGAL_SYNONYMS.items():
+        if trigger in lowered:
+            extra.extend(synonyms)
+    if not extra:
+        return question
+    return question + " " + " ".join(dict.fromkeys(extra))
 
 
 # --- transport ---------------------------------------------------------------
@@ -250,7 +288,7 @@ def keyword_search(terms, count, ctx):
     params = {
         "or": "(" + ",".join(clauses) + ")",
         "select": "id,document_id,title,content,metadata",
-        "limit": str(max(count * KEYWORD_FETCH_FACTOR, count)),
+        "limit": str(max(count * KEYWORD_FETCH_FACTOR, KEYWORD_FETCH_LIMIT)),
     }
     url = base + "/document_sections?" + urllib.parse.urlencode(
         params, quote_via=urllib.parse.quote, safe="(),.*"
@@ -281,6 +319,10 @@ def vector_is_weak(hits, count):
     if not hits:
         return True, "no vector hits"
     top = max((h.get("similarity") or 0.0) for h in hits)
+    if top < CONFIDENT_TOP_SIMILARITY:
+        return True, "top similarity %.3f < confident %.2f" % (
+            top, CONFIDENT_TOP_SIMILARITY
+        )
     if top < WEAK_TOP_SIMILARITY:
         return True, "top similarity %.3f < %.2f" % (top, WEAK_TOP_SIMILARITY)
     want = min(WEAK_MIN_HITS, count)
@@ -293,6 +335,51 @@ def annotate(hits, source):
     for hit in hits:
         hit["matched_by"] = source
     return hits
+
+
+def run_query(question, count=5, mode="auto", ctx=None):
+    """Run the hybrid pipeline and return (trace, hits).
+
+    Single source of truth for the orchestration: main() and the tests both
+    call this, so the tests exercise the production path instead of a private
+    reimplementation that can silently drift from it.
+    """
+    if ctx is None:
+        ctx = build_ctx()
+    trace = {"question": question, "mode": mode, "match_count": count}
+
+    expanded = expand_question(question)
+    if expanded != question:
+        trace["expanded"] = expanded
+
+    if mode == "keyword":
+        terms = extract_terms(expanded)
+        trace["terms"] = terms
+        hits = annotate(keyword_search(terms, count, ctx), "keyword")
+        trace["path"] = "keyword"
+    else:
+        vec = embed(expanded, ctx)
+        hits = annotate(rpc_match(vec, VECTOR_THRESHOLD, count, ctx), "vector")
+        weak, why = vector_is_weak(hits, count)
+        trace["vector_state"] = why
+        if mode == "vector" or not weak:
+            trace["path"] = "vector"
+        else:
+            terms = extract_terms(expanded)
+            trace["terms"] = terms
+            fallback = annotate(keyword_search(terms, count, ctx), "keyword")
+            trace["path"] = "vector+keyword" if hits else "keyword"
+            trace["fallback_hits"] = len(fallback)
+            # The vector result is weak, so the keyword hits -- which matched
+            # actual query terms -- lead. Vector hits fill any remaining slots.
+            # (Appending them after the vector hits would let the weak vector
+            # result fill the quota and silently drop the fallback.)
+            seen = set(h["id"] for h in fallback)
+            merged = fallback + [h for h in hits if h["id"] not in seen]
+            hits = merged[:count]
+
+    trace["returned"] = len(hits)
+    return trace, hits
 
 
 def main():
@@ -323,32 +410,7 @@ def main():
     question = positional[0]
     count = int(positional[1]) if len(positional) > 1 else 5
 
-    ctx = build_ctx()
-    trace = {"question": question, "mode": mode, "match_count": count}
-
-    if mode == "keyword":
-        terms = extract_terms(question)
-        trace["terms"] = terms
-        hits = annotate(keyword_search(terms, count, ctx), "keyword")
-        trace["path"] = "keyword"
-    else:
-        vec = embed(question, ctx)
-        hits = annotate(rpc_match(vec, VECTOR_THRESHOLD, count, ctx), "vector")
-        weak, why = vector_is_weak(hits, count)
-        trace["vector_state"] = why
-        if mode == "vector" or not weak:
-            trace["path"] = "vector"
-        else:
-            terms = extract_terms(question)
-            trace["terms"] = terms
-            fallback = annotate(keyword_search(terms, count, ctx), "keyword")
-            trace["path"] = "vector+keyword" if hits else "keyword"
-            trace["fallback_hits"] = len(fallback)
-            seen = set(h["id"] for h in hits)
-            merged = hits + [h for h in fallback if h["id"] not in seen]
-            hits = merged[:count]
-
-    trace["returned"] = len(hits)
+    trace, hits = run_query(question, count, mode)
     print(json.dumps({"trace": trace, "results": hits},
                      ensure_ascii=False, indent=2))
 

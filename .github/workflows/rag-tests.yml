@@ -1,0 +1,58 @@
+name: RAG tests
+
+# The RAG pipeline lives under rag/. Run its behaviour tests on every change to
+# that module (and to this workflow). The live tests need credentials; without
+# them they skip instead of failing, so the gate stays green on forks and on
+# repos that have not configured secrets yet.
+
+on:
+  push:
+    branches: [main, rag-ingest]
+    paths:
+      - "rag/**"
+      - ".github/workflows/rag-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "rag/**"
+      - ".github/workflows/rag-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: rag-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax-check Python modules
+        run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/test_rag_query.py
+
+      - name: Syntax-check Node module
+        run: node --check rag/rag_query.mjs
+
+      # The suite skips (does not fail) when the credentials below are absent.
+      # Add these repository secrets to enable the live integration tests:
+      #   OPENROUTER_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+      # Note: secrets are not exposed to pull requests from forks, so those
+      # runs exercise the pure-function tests only -- by design.
+      - name: Run RAG behaviour tests
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 rag/test_rag_query.py

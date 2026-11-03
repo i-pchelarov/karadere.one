@@ -216,9 +216,12 @@ function annotate(hits, source) {
 function parseArgs(argv) {
   let mode = "auto";
   const positional = [];
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
     if (arg.startsWith("--mode=")) mode = arg.slice(7).trim();
-    else if (arg === "--vector") mode = "vector";
+    else if (arg === "--mode") {
+      if (i + 1 < argv.length) mode = argv[++i].trim();
+    } else if (arg === "--vector") mode = "vector";
     else if (arg === "--keyword") mode = "keyword";
     else if (!arg.startsWith("--")) positional.push(arg);
   }

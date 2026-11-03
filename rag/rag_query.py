@@ -296,15 +296,25 @@ def annotate(hits, source):
 
 
 def main():
-    positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    argv = sys.argv[1:]
+    positional = []
     mode = "auto"
-    for arg in sys.argv[1:]:
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
         if arg.startswith("--mode="):
             mode = arg.split("=", 1)[1].strip()
+        elif arg == "--mode":
+            i += 1
+            if i < len(argv):
+                mode = argv[i].strip()
         elif arg == "--vector":
             mode = "vector"
         elif arg == "--keyword":
             mode = "keyword"
+        elif not arg.startswith("--"):
+            positional.append(arg)
+        i += 1
     if not positional or mode not in ("auto", "vector", "keyword"):
         sys.exit(
             'usage: rag_query.py "question" [match_count] [--mode auto|vector|keyword]'

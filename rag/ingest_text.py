@@ -76,6 +76,17 @@ GOOGLEDOCS_TOOL = "GOOGLEDOCS_GET_DOCUMENT_PLAINTEXT"
 ARTICLE_RE = re.compile(r"(?m)^[ \t]*(Чл\.\s*\d+[а-я]?\.)")
 ALINEA_RE = re.compile(r"(?m)^[ \t]*\(\d+[а-я]?\)")
 CHAPTER_RE = re.compile(r"(?m)^[ \t]*((?:Глава|Раздел|Част)\b[^\n]*)")
+# Structural sections that sit after the last article and must not be folded
+# into it: additional/provisional provisions and the appendices.
+SECTION_RE = re.compile(
+    r"(?m)^[ \t]*("
+    r"(?:Допълнителни|ДОПЪЛНИТЕЛНИ)\s+разпоредби"
+    r"|(?:Преходни\s+и\s+Заключителни|ПРЕХОДНИ\s+И\s+ЗАКЛЮЧИТЕЛНИ)\s+разпоредби"
+    r"|(?:Заключителни|ЗАКЛЮЧИТЕЛНИ)\s+разпоредби"
+    r"|Приложение\s*№\s*\d+"
+    r"|Релевантни\s+актове[^\n]*"
+    r")"
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -222,21 +233,66 @@ def is_legal(text: str) -> bool:
     return len(ARTICLE_RE.findall(text)) >= 2 and len(ALINEA_RE.findall(text)) >= 1
 
 
+def split_sections(text: str, from_pos: int) -> list[dict]:
+    """Split the tail of a law (after the last article) into named sections.
+
+    Without this, everything after the final article -- additional provisions
+    (Допълнителни разпоредби), transitional/final provisions and the numbered
+    appendices (Приложение № N) -- is swallowed by the last article and cited
+    under its number. Each returned unit carries ``section`` so retrieval can
+    name the real part.
+    """
+    markers = [m for m in SECTION_RE.finditer(text) if m.start() >= from_pos]
+    if not markers:
+        return []
+    units: list[dict] = []
+    for i, match in enumerate(markers):
+        start = match.start()
+        end = markers[i + 1].start() if i + 1 < len(markers) else len(text)
+        body = text[start:end].strip()
+        if not body:
+            continue
+        units.append(
+            {
+                "content": body,
+                "section": match.group(1).strip(),
+                "section_heading": text[start:end].split("\n", 1)[0].strip(),
+            }
+        )
+    return units
+
+
 def split_articles(text: str) -> list[dict]:
     """Split law text into one unit per article (Чл.).
 
     Each unit carries its article label/number and the enclosing chapter/раздел
-    so retrieval can cite the source precisely.
+    so retrieval can cite the source precisely. Named sections that follow the
+    last article (Допълнителни/Преходни разпоредби, приложения) are split off
+    as their own units instead of being folded into the last article.
     """
     articles = list(ARTICLE_RE.finditer(text))
     if not articles:
         return []
     chapters = list(CHAPTER_RE.finditer(text))
 
+    # Everything from the first post-article section marker onward belongs to
+    # named sections, not to the last article.
+    tail_sections = split_sections(text, articles[-1].end())
+    tail_start = None
+    if tail_sections:
+        first_section = SECTION_RE.search(text, articles[-1].end())
+        if first_section:
+            tail_start = first_section.start()
+
     units: list[dict] = []
     for i, match in enumerate(articles):
         start = match.start()
         end = articles[i + 1].start() if i + 1 < len(articles) else len(text)
+        if tail_start is not None and i + 1 == len(articles):
+            end = tail_start
+        body = text[start:end].strip()
+        if not body:
+            continue
         label = match.group(1).strip()
         number = re.search(r"\d+[а-я]?", label).group(0)
 
@@ -249,12 +305,13 @@ def split_articles(text: str) -> list[dict]:
 
         units.append(
             {
-                "content": text[start:end].strip(),
+                "content": body,
                 "article": label,
                 "article_number": number,
                 "chapter": chapter,
             }
         )
+    units.extend(tail_sections)
     return units
 
 
@@ -289,13 +346,15 @@ def build_units(
             expanded.append(unit)
             continue
         parts = chunk_text(unit["content"], legal_max, 0)
+        # Sections/appendix chunks have no article label; continue them under
+        # their section name so the chunk stays self-describing.
+        label = unit.get("article") or unit.get("section") or ""
         for j, part in enumerate(parts):
-            # Part 1 already starts with the article label; tag continuations so
-            # the chunk stays self-describing after splitting.
+            # Part 1 already starts with the label; tag continuations.
             if j == 0:
                 content = part
             else:
-                content = f"{unit['article']} (продължение) {part}"
+                content = f"{label} (продължение) {part}"
             expanded.append(
                 {
                     **unit,
@@ -601,6 +660,8 @@ def main() -> None:
         if kind == "legal":
             meta["article"] = unit.get("article")
             meta["article_number"] = unit.get("article_number")
+            if unit.get("section"):
+                meta["section"] = unit["section"]
             if unit.get("chapter"):
                 meta["chapter"] = unit["chapter"]
             if unit.get("part"):

@@ -142,8 +142,162 @@ def download_bytes(url: str) -> bytes:
 # --------------------------------------------------------------------------- #
 # PDF text extraction
 # --------------------------------------------------------------------------- #
+# pypdf's default extractor inserts spurious spaces inside words when a font
+# carries no /W widths (common in Bulgarian State Gazette PDFs, where the
+# Type0 fonts have neither /W nor /DW). It then treats the TJ kerning offsets
+# as word gaps. We therefore read the content stream ourselves: glyphs are
+# mapped through each font's /ToUnicode CMap (Type0) or cp1252 (simple fonts),
+# and runs are grouped into lines by their text-matrix position.
+
+_TJ_TOKEN_RE = re.compile(
+    r"/(F\d+)\s+[\d.]+\s+Tf"  # font selection
+    r"|([-\d.]+)\s+([-\d.]+)\s+(?:Td|TD)"  # line positioning
+    r"|([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+Tm"
+    r"|<([0-9a-fA-F\s]*)>"  # hex string
+    r"|\(((?:[^()\\]|\\.)*)\)"  # literal string
+)
+
+_PDF_ESCAPES = {
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "b": "\b",
+    "f": "\f",
+    "(": "(",
+    ")": ")",
+    "\\": "\\",
+}
+
+
+def _unescape_pdf_string(value: str) -> str:
+    """Resolve PDF literal-string escapes (\\(, \\), \\n, \\ddd)."""
+    out: list[str] = []
+    i = 0
+    while i < len(value):
+        ch = value[i]
+        if ch == "\\" and i + 1 < len(value):
+            nxt = value[i + 1]
+            if nxt in _PDF_ESCAPES:
+                out.append(_PDF_ESCAPES[nxt])
+                i += 2
+                continue
+            if nxt.isdigit():
+                j = i + 1
+                digits = ""
+                while j < len(value) and len(digits) < 3 and value[j] in "01234567":
+                    digits += value[j]
+                    j += 1
+                out.append(chr(int(digits, 8)))
+                i = j
+                continue
+            out.append(nxt)
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _parse_tounicode(stream: bytes) -> dict[int, str]:
+    """Parse a /ToUnicode CMap into {code: character}."""
+    text = stream.decode("latin-1")
+    mapping: dict[int, str] = {}
+    for block in re.findall(r"beginbfchar(.*?)endbfchar", text, re.S):
+        for src, dst in re.findall(r"<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>", block):
+            mapping[int(src, 16)] = bytes.fromhex(dst).decode("utf-16-be", "replace")
+    for block in re.findall(r"beginbfrange(.*?)endbfrange", text, re.S):
+        for lo, hi, dst in re.findall(
+            r"<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>", block
+        ):
+            lo_i, hi_i, base = int(lo, 16), int(hi, 16), int(dst, 16)
+            for code in range(lo_i, hi_i + 1):
+                mapping[code] = chr(base + (code - lo_i))
+    return mapping
+
+
+def _page_fonts(page) -> dict[str, tuple[dict[int, str] | None, bool]]:
+    """Map font resource name -> (ToUnicode map or None, is_two_byte)."""
+    fonts: dict[str, tuple[dict[int, str] | None, bool]] = {}
+    resources = page.get("/Resources") or {}
+    for name, ref in (resources.get("/Font") or {}).items():
+        font = ref.get_object()
+        to_unicode = font.get("/ToUnicode")
+        cmap = (
+            _parse_tounicode(to_unicode.get_object().get_data())
+            if to_unicode is not None
+            else None
+        )
+        fonts[name] = (cmap, font.get("/Subtype") == "/Type0")
+    return fonts
+
+
+def _decode_hex_string(hexs: str, cmap, two_byte: bool) -> str:
+    hexs = re.sub(r"\s+", "", hexs)
+    if two_byte:
+        return "".join(
+            (cmap or {}).get(int(hexs[i : i + 4], 16), "")
+            for i in range(0, len(hexs) - 3, 4)
+        )
+    return bytes.fromhex(hexs).decode("cp1252", "replace")
+
+
+def _extract_page_text(page) -> str:
+    """Extract one page's text from its content stream, position-aware."""
+    fonts = _page_fonts(page)
+    contents = page.get_contents()
+    if contents is None:
+        return ""
+    raw = contents.get_data().decode("latin-1")
+
+    runs: list[tuple[float, float, str]] = []
+    for block in re.findall(r"BT(.*?)ET", raw, re.S):
+        font_name = None
+        x = y = 0.0
+        buf: list[str] = []
+        for m in _TJ_TOKEN_RE.finditer(block):
+            if m.group(1):  # /Fn ... Tf
+                font_name = "/" + m.group(1)
+            elif m.group(2) is not None:  # Td / TD (relative to current line)
+                x += float(m.group(2))
+                y += float(m.group(3))
+            elif m.group(4) is not None:  # Tm
+                x, y = float(m.group(8)), float(m.group(9))
+            elif m.group(10) is not None:  # <hex>
+                cmap, two_byte = fonts.get(font_name, (None, False))
+                buf.append(_decode_hex_string(m.group(10), cmap, two_byte))
+            elif m.group(11) is not None:  # (literal)
+                buf.append(_unescape_pdf_string(m.group(11)))
+        text = "".join(buf)
+        if text.strip():
+            runs.append((y, x, text))
+
+    if not runs:
+        return ""
+
+    # Group runs into lines: same baseline (within 1 unit), ordered left to right.
+    runs.sort(key=lambda r: (-r[0], r[1]))
+    lines: list[str] = []
+    current_y: float | None = None
+    parts: list[str] = []
+    for y, _x, text in runs:
+        if current_y is None or abs(y - current_y) > 1:
+            if parts:
+                lines.append("".join(parts))
+            parts = [text]
+            current_y = y
+        else:
+            parts.append(text)
+    if parts:
+        lines.append("".join(parts))
+    return "\n".join(lines)
+
+
 def extract_pdf_text(data: bytes) -> str:
-    """Extract the text layer of a PDF with pypdf (no post-processing)."""
+    """Extract the text layer of a PDF.
+
+    Uses a position-aware content-stream reader (see the note above) and falls
+    back to pypdf's default extractor for pages it cannot decode.
+    """
     try:
         from pypdf import PdfReader
     except ImportError:
@@ -158,7 +312,15 @@ def extract_pdf_text(data: bytes) -> str:
         except Exception:
             die("PDF is encrypted and could not be opened")
 
-    pages = [(page.extract_text() or "") for page in reader.pages]
+    pages: list[str] = []
+    for page in reader.pages:
+        try:
+            text = _extract_page_text(page)
+        except Exception:
+            text = ""
+        if not text.strip():
+            text = page.extract_text() or ""
+        pages.append(text)
     return "\n".join(pages)
 
 

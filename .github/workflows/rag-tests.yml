@@ -7,7 +7,7 @@ name: RAG tests
 
 on:
   push:
-    branches: [main, rag-ingest]
+    branches: [main, rag-ingest, rag-pdf-ingest]
     paths:
       - "rag/**"
       - ".github/workflows/rag-tests.yml"
@@ -40,7 +40,10 @@ jobs:
           node-version: "20"
 
       - name: Syntax-check Python modules
-        run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/ingest_pdf.py rag/test_rag_query.py
+        run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/ingest_pdf.py rag/test_rag_query.py rag/test_ingest_pdf.py
+
+      - name: Install test dependencies
+        run: python3 -m pip install --quiet pypdf
 
       - name: Syntax-check Node module
         run: node --check rag/rag_query.mjs
@@ -56,3 +59,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 rag/test_rag_query.py
+
+      # The PDF ingestion tests are hermetic (fixture built in memory) and run
+      # everywhere. The live Drive dry-run inside them skips unless the Composio
+      # CLI is present, which it is not on the CI runner -- so only the hermetic
+      # layer runs here.
+      - name: Run PDF ingestion tests
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python3 rag/test_ingest_pdf.py

@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "make_boundary_map.py")
 
 sys.path.insert(0, HERE)
-import rag.appendices.make_boundary_map as mbm  # noqa: E402
+import make_boundary_map as mbm  # noqa: E402
 
 
 def square(cx, cy, side, start, step=100.0):

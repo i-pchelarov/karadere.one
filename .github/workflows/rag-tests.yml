@@ -43,7 +43,7 @@ jobs:
         run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/ingest_pdf.py rag/test_rag_query.py rag/test_ingest_pdf.py
 
       - name: Install test dependencies
-        run: python3 -m pip install --quiet pypdf
+        run: python3 -m pip install --quiet -r rag/requirements.txt
 
       - name: Syntax-check Node module
         run: node --check rag/rag_query.mjs

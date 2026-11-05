@@ -1,0 +1,11 @@
+# Supabase
+.branches
+.temp
+
+# Локални стойности за `supabase functions serve` — никога в git.
+.env
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local

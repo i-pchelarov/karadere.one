@@ -1,0 +1,11 @@
+{
+  "imports": {},
+  "tasks": {
+    "check": "deno check index.ts",
+    "test": "deno test --allow-env --allow-net"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window", "deno.unstable"]
+  }
+}

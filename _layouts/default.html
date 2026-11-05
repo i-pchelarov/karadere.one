@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="bg" class="scroll-smooth">
+<head>
+    <!-- Задължителен charset за кирилица -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title | default: "Природосъобразно Карадере | karadere.one" }}</title>
+    <meta name="description" content="Сдружение за опазване на дивия плаж Карадере и насърчаване на свободен туризъм с нулев отпечатък.">
+
+    <!-- Tailwind CSS CDN -->
+    {% include tailwind-config.html %}
+
+    <!-- FontAwesome за икони -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Брандова икона -->
+    <link rel="icon" type="image/svg+xml" href="./web/favicon.svg">
+    <!-- Персонализиран стил -->
+    <link rel="stylesheet" href="web/css/style.css">
+
+    <!-- Google Fonts с поддръжка на Кирилица (Pangolin & Caveat) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Pangolin&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+<!-- Глобален Хедър (Навигация) - незадължително/ако има такъв -->
+{% if site.header != false %}
+<header class="w-full py-4 px-6 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <a href="/" class="font-graffiti text-2xl font-bold text-white tracking-wide hover:text-teal-400 transition-colors">
+            Karadere.one
+        </a>
+        <a href="https://fb.me/e/7lneUV7mb" target="_blank" class="text-xs font-mono uppercase bg-teal-500/10 border border-teal-500/30 text-teal-400 px-3 py-1.5 rounded-full hover:bg-teal-500/20 transition-all">
+            <i class="fa-brands fa-facebook mr-1"></i> Събитие
+        </a>
+    </div>
+</header>
+{% endif %}
+
+<!-- Основно съдържание на страницата -->
+<main class="flex-grow">
+    {{ content }}
+</main>
+
+<!-- Глобален Футър -->
+<footer class="w-full py-8 border-t border-slate-900 bg-slate-950 text-center text-xs font-mono text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 space-y-2">
+        <p>© 2026 Сдружение „Природосъобразно Карадере“. Всички права запазени.</p>
+    </div>
+</footer>
+
+</body>
+</html>

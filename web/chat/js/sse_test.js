@@ -3,14 +3,14 @@
 // Никаква мрежа: `fetch` се инжектира и връща ReadableStream от байтове, които
 // сами сглобяваме. Пуска се с:
 //   deno test --allow-env --allow-net --allow-read sse_test.js
-// (от директорията chat/web/js)
+// (от директорията web/chat/js)
 
 import { createSseParser, streamChat } from "./sse.js";
 import {
   assert,
   assertEquals,
   assertStringIncludes,
-} from "../../supabase/functions/chat/test_assert.ts";
+} from "../../../chat/supabase/functions/chat/test_assert.ts";
 
 const enc = new TextEncoder();
 

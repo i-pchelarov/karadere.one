@@ -1,5 +1,4 @@
 ---
-permalink: /chat/
 ---
 <!DOCTYPE html>
 <html lang="bg" class="scroll-smooth">
@@ -18,9 +17,9 @@ permalink: /chat/
     <!-- Брандова икона -->
     <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
     <!-- Персонализиран стил -->
-    <link rel="stylesheet" href="/web/css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
     <!-- Стил за чата -->
-    <link rel="stylesheet" href="/chat/web/css/chat.css">
+    <link rel="stylesheet" href="./css/chat.css">
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
 
@@ -45,7 +44,7 @@ permalink: /chat/
                  изключен (страницата показва съобщение). Попълва се при деплой. -->
             <div id="chat-root"
                  class="chat-root"
-                 data-endpoint="http://localhost:8000">
+                 data-endpoint="{{ site.chat.endpoint }}">
 
                 <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Разговор"></div>
 
@@ -81,6 +80,6 @@ permalink: /chat/
     {% include footer.html %}
 
     <!-- SSE клиент + DOM връзка -->
-    <script type="module" src="../js/chat.js"></script>
+    <script type="module" src="./js/chat.js"></script>
 </body>
 </html>

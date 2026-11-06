@@ -7,3 +7,6 @@ exclude:
   - .gitignore
   - rag
   - chat
+
+chat:
+  endpoint: "https://wzdneqvfhlznnmtdgrkm.supabase.co/functions/v1/chat"

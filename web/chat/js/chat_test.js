@@ -6,13 +6,13 @@
 // историята и сливането на цитатите.
 //
 //   deno test --allow-env --allow-net --allow-read chat_test.js
-// (от директорията chat/web/js)
+// (от директорията web/chat/js)
 
 import { buildRequestBody, mergeArticles, trimHistory } from "./chat.js";
 import {
   assert,
   assertEquals,
-} from "../../supabase/functions/chat/test_assert.ts";
+} from "../../../chat/supabase/functions/chat/test_assert.ts";
 
 Deno.test("buildRequestBody: мапва историята и слага режим", () => {
   const history = [

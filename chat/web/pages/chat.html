@@ -45,7 +45,7 @@ permalink: /chat/
                  изключен (страницата показва съобщение). Попълва се при деплой. -->
             <div id="chat-root"
                  class="chat-root"
-                 data-endpoint="">
+                 data-endpoint="http://localhost:8000">
 
                 <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Разговор"></div>
 
@@ -81,6 +81,6 @@ permalink: /chat/
     {% include footer.html %}
 
     <!-- SSE клиент + DOM връзка -->
-    <script type="module" src="/chat/web/js/chat.js"></script>
+    <script type="module" src="../js/chat.js"></script>
 </body>
 </html>

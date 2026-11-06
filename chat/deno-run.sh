@@ -12,5 +12,5 @@ fi
 
 exec deno run \
   --allow-env --allow-net --allow-read \
-  --env-file=../.env.local \
+  --env=../.env.local \
   index.ts

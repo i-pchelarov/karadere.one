@@ -5,7 +5,7 @@
 // клиентът получава meta → delta… → done и че контекстът е стигнал до модела.
 
 import { assert, assertEquals, assertStringIncludes } from "./test_assert.ts";
-import { handleChat, type HandlerOverrides } from "./index.ts";
+import { handleChat, modelChain, type HandlerOverrides } from "./index.ts";
 import type { AppConfig } from "./config.ts";
 import { DEFAULT_TUNING } from "./config.ts";
 import { makeMockDeps } from "./test_mock.ts";
@@ -14,9 +14,14 @@ function testConfig(): AppConfig {
   return {
     supabase: { url: "https://mock.supabase.test/rest/v1", anonKey: "mock-anon" },
     openRouter: { apiKey: "mock-key", base: "https://mock.openrouter.test/api/v1" },
-    models: { chat: "mock/chat", embed: "mock/embed", embedDimensions: 768 },
+    models: {
+      chat: "mock/chat",
+      chatFallbacks: ["mock/chat-2", "mock/chat-3"],
+      embed: "mock/embed",
+      embedDimensions: 768,
+    },
     rag: DEFAULT_TUNING,
-    limits: { maxMessages: 20, maxMessageChars: 4000, maxTokens: 1200, topK: 5 },
+    limits: { maxMessages: 20, maxMessageChars: 4000, maxTokens: 1200, topK: 5, reasoning: false },
     cors: { allowedOrigin: "https://karadere.one" },
     turnstile: { secretKey: "" },
   };
@@ -128,6 +133,151 @@ Deno.test("e2e: контекстът стига до модела", async () => 
   assertEquals(body.messages[body.messages.length - 1].content, QUESTION);
 });
 
+Deno.test("e2e: грешка В ПОТОКА на LLM стига до клиента като error", async () => {
+  // Точно случаят, който даваше meta → done без delta: OpenRouter праща
+  // грешката като `data: {"error":{...}}` и после [DONE].
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      const body = `data: ${
+        JSON.stringify({ error: { message: "upstream rate-limited", code: 429 } })
+      }\n\ndata: [DONE]\n\n`;
+      return new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }
+    return await makeMockDeps().fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl },
+  );
+  const events = await readSse(resp);
+  const names = events.map((e) => e.event);
+  assert(names.includes("error"), "грешката в потока трябва да стигне като error");
+  const err = events.find((e) => e.event === "error")!.data as { message: string };
+  assertStringIncludes(err.message, "upstream rate-limited");
+  assertEquals(names.includes("done"), false, "не бива да има done след error");
+});
+
+Deno.test("e2e: празен отговор дава warning, не мълчалив done", async () => {
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      // Само finish_reason, без нито един content chunk.
+      const body = `data: ${
+        JSON.stringify({ choices: [{ delta: {}, finish_reason: "length" }] })
+      }\n\ndata: [DONE]\n\n`;
+      return new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }
+    return await makeMockDeps().fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl },
+  );
+  const events = await readSse(resp);
+  const names = events.map((e) => e.event);
+  assert(names.includes("warning"), "празният отговор трябва да даде warning");
+  const done = events.find((e) => e.event === "done")!.data as { deltas: number; finish: string };
+  assertEquals(done.deltas, 0);
+  assertEquals(done.finish, "length");
+});
+
+Deno.test("e2e: не-SSE JSON отговор не се губи", async () => {
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: "обикновен JSON" } }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return await makeMockDeps().fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl },
+  );
+  const events = await readSse(resp);
+  const text = events.filter((e) => e.event === "delta")
+    .map((e) => (e.data as { text: string }).text).join("");
+  assertEquals(text, "обикновен JSON");
+});
+
+Deno.test("e2e: заявката изключва reasoning по подразбиране", async () => {
+  const captured: { body?: unknown } = {};
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: makeFetch(["ок"], captured) },
+  );
+  await readSse(resp);
+
+  const body = captured.body as { reasoning?: { enabled?: boolean }; usage?: unknown };
+  assertEquals(body.reasoning, { enabled: false });
+  assertEquals(body.usage, { include: true });
+});
+
+Deno.test("e2e: при CHAT_REASONING=1 reasoning не се изключва", async () => {
+  const captured: { body?: unknown } = {};
+  const cfg = testConfig();
+  cfg.limits.reasoning = true;
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: cfg, fetch: makeFetch(["ок"], captured) },
+  );
+  await readSse(resp);
+
+  const body = captured.body as { reasoning?: unknown };
+  assertEquals(body.reasoning, undefined, "не бива да праща reasoning при включен");
+});
+
+Deno.test("e2e: отрязан отговор дава warning и usage в done", async () => {
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      const body = `data: ${
+        JSON.stringify({ choices: [{ delta: { content: "отрязан" } }] })
+      }\n\ndata: ${
+        JSON.stringify({
+          choices: [{ delta: {}, finish_reason: "length" }],
+          usage: { completion_tokens: 1200, completion_tokens_details: { reasoning_tokens: 900 } },
+        })
+      }\n\ndata: [DONE]\n\n`;
+      return new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }
+    return await makeMockDeps().fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl },
+  );
+  const events = await readSse(resp);
+  const names = events.map((e) => e.event);
+  assert(names.includes("warning"), "отрязаният отговор трябва да даде warning");
+
+  const done = events.find((e) => e.event === "done")!.data as {
+    finish: string;
+    deltas: number;
+    usage: { completion?: number; reasoning?: number } | null;
+  };
+  assertEquals(done.finish, "length");
+  assertEquals(done.deltas, 1);
+  assertEquals(done.usage?.completion, 1200);
+  assertEquals(done.usage?.reasoning, 900);
+});
+
 Deno.test("e2e: retrieval грешка дава warning, но отговорът продължава", async () => {
   const mock = makeMockDeps({ failOn: "embeddings" });
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -135,7 +285,7 @@ Deno.test("e2e: retrieval грешка дава warning, но отговорът
     if (url.endsWith("/chat/completions")) {
       return new Response(
         `data: ${JSON.stringify({ choices: [{ delta: { content: "без цитати" } }] })}\n\ndata: [DONE]\n\n`,
-        { status: 200 },
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
       );
     }
     return await mock.fetch(input as string, init);
@@ -192,4 +342,36 @@ Deno.test("GET връща 405", async () => {
   const req = new Request("https://fn.test/chat", { method: "GET" });
   const resp = await handleChat(req, { config: testConfig(), fetch: makeFetch(["x"]) });
   assertEquals(resp.status, 405);
+});
+
+Deno.test("modelChain: основният е пръв, после резервните", () => {
+  assertEquals(modelChain(testConfig()), ["mock/chat", "mock/chat-2", "mock/chat-3"]);
+});
+
+Deno.test("modelChain: без резервни връща само основния", () => {
+  const cfg = testConfig();
+  cfg.models.chatFallbacks = [];
+  assertEquals(modelChain(cfg), ["mock/chat"]);
+});
+
+Deno.test("modelChain: отрязва до 3 модела (лимит на OpenRouter)", () => {
+  const cfg = testConfig();
+  cfg.models.chatFallbacks = ["mock/chat-2", "mock/chat-3", "mock/chat-4", "mock/chat-5"];
+  const chain = modelChain(cfg);
+  assertEquals(chain.length, 3);
+  assertEquals(chain, ["mock/chat", "mock/chat-2", "mock/chat-3"]);
+});
+
+Deno.test("e2e: заявката към LLM праща `models` масив, не `model`", async () => {
+  const captured: { body?: unknown } = {};
+  const overrides: HandlerOverrides = {
+    config: testConfig(),
+    fetch: makeFetch(["ок"], captured),
+  };
+  const resp = await handleChat(post({ messages: [{ role: "user", content: QUESTION }] }), overrides);
+  await readSse(resp);
+
+  const body = captured.body as { models?: string[]; model?: string };
+  assertEquals(body.models, ["mock/chat", "mock/chat-2", "mock/chat-3"]);
+  assertEquals(body.model, undefined, "не бива да праща `model` заедно с `models`");
 });

@@ -14,7 +14,7 @@
 //
 // EventSource не поддържа POST, затова клиентът чете през fetch + ReadableStream.
 
-import { loadConfig, ragDeps, type AppConfig } from "./config.ts";
+import { loadConfig, ragDeps, MAX_MODELS, type AppConfig } from "./config.ts";
 import { runQuery, type Hit, type Mode } from "./rag.ts";
 import { checkRateLimit } from "./ratelimit.ts";
 import { articleOf, buildMessages, type ChatMessage } from "./prompt.ts";
@@ -99,7 +99,64 @@ function sse(event: string, data: unknown): Uint8Array {
 
 // --- LLM стрийминг -----------------------------------------------------------
 interface OpenRouterChunk {
-  choices?: Array<{ delta?: { content?: string } }>;
+  choices?: Array<{
+    delta?: { content?: string | null; reasoning?: string | null };
+    finish_reason?: string | null;
+  }>;
+  error?: { message?: string; code?: number | string };
+  usage?: {
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number };
+  };
+}
+
+export interface LlmResult {
+  deltas: number;
+  finishReason: string | null;
+  usage: { completion?: number; reasoning?: number } | null;
+}
+
+// Редът на моделите: основният, после резервните. OpenRouter ги пробва
+// последователно при 429/срив/модерация. Само `:free` — платен модел в
+// списъка се таксува при fallback. Отрязан до MAX_MODELS: OpenRouter връща
+// 400 при повече от 3 модела.
+export function modelChain(cfg: AppConfig): string[] {
+  return [cfg.models.chat, ...cfg.models.chatFallbacks].slice(0, MAX_MODELS);
+}
+
+interface ParsedChunk {
+  text: string | null;
+  finishReason: string | null;
+  usage: { completion?: number; reasoning?: number } | null;
+}
+
+// Разчита един SSE payload. Хвърля при грешка, пратена В ПОТОКА: OpenRouter я
+// връща като `data: {"error":{...}}` и после `[DONE]`. Ако я прескочим,
+// клиентът вижда meta → done без нито един delta и причината се губи напълно.
+function parseChunk(payload: string): ParsedChunk | null {
+  let parsed: OpenRouterChunk;
+  try {
+    parsed = JSON.parse(payload) as OpenRouterChunk;
+  } catch {
+    return null; // не-JSON ред (коментар/keep-alive) — прескачаме
+  }
+  if (parsed.error) {
+    const msg = parsed.error.message ?? JSON.stringify(parsed.error);
+    throw new Error(`LLM stream error: ${msg}`);
+  }
+  const choice = parsed.choices?.[0];
+  const text = choice?.delta?.content;
+  const usage = parsed.usage
+    ? {
+      completion: parsed.usage.completion_tokens,
+      reasoning: parsed.usage.completion_tokens_details?.reasoning_tokens,
+    }
+    : null;
+  return {
+    text: typeof text === "string" && text.length > 0 ? text : null,
+    finishReason: choice?.finish_reason ?? null,
+    usage,
+  };
 }
 
 async function streamLlm(
@@ -107,7 +164,7 @@ async function streamLlm(
   cfg: AppConfig,
   send: (chunk: Uint8Array) => void,
   fetchImpl: typeof fetch = fetch,
-): Promise<void> {
+): Promise<LlmResult> {
   const resp = await fetchImpl(`${cfg.openRouter.base}/chat/completions`, {
     method: "POST",
     headers: {
@@ -115,10 +172,15 @@ async function streamLlm(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: cfg.models.chat,
+      models: modelChain(cfg),
       messages,
       stream: true,
       max_tokens: cfg.limits.maxTokens,
+      // Reasoning токените се броят към max_tokens. При кратък правен отговор
+      // те само изяждат бюджета и отговорът излиза отрязан.
+      ...(cfg.limits.reasoning ? {} : { reasoning: { enabled: false } }),
+      // За да виждаме колко е отишло за „мислене“ и колко за текст.
+      usage: { include: true },
     }),
   });
 
@@ -127,9 +189,37 @@ async function streamLlm(
     throw new Error(`LLM HTTP ${resp.status}: ${detail}`);
   }
 
+  // Предпазна мрежа: ако доставчикът върне обикновен JSON вместо SSE поток
+  // (някои рутери игнорират `stream`), отговорът не бива да се губи.
+  const ctype = resp.headers.get("content-type") ?? "";
+  if (!ctype.includes("text/event-stream")) {
+    const raw = await resp.text();
+    let parsed: {
+      choices?: Array<{ message?: { content?: string } }>;
+      error?: { message?: string };
+    };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error(`LLM върна не-SSE отговор: ${raw.slice(0, 300)}`);
+    }
+    if (parsed.error) {
+      throw new Error(`LLM error: ${parsed.error.message ?? raw.slice(0, 300)}`);
+    }
+    const text = parsed.choices?.[0]?.message?.content;
+    if (typeof text === "string" && text.length > 0) {
+      send(sse("delta", { text }));
+      return { deltas: 1, finishReason: "stop", usage: null };
+    }
+    throw new Error(`LLM върна JSON без съдържание: ${raw.slice(0, 300)}`);
+  }
+
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let deltas = 0;
+  let finishReason: string | null = null;
+  let usage: LlmResult["usage"] = null;
 
   try {
     for (;;) {
@@ -144,17 +234,15 @@ async function streamLlm(
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) continue;
         const payload = trimmed.slice(5).trim();
-        if (payload === "[DONE]") return;
+        if (payload === "[DONE]") return { deltas, finishReason, usage };
 
-        let parsed: OpenRouterChunk;
-        try {
-          parsed = JSON.parse(payload) as OpenRouterChunk;
-        } catch {
-          continue; // не-JSON ред (коментар/keep-alive) — прескачаме
-        }
-        const text = parsed.choices?.[0]?.delta?.content;
-        if (typeof text === "string" && text.length > 0) {
-          send(sse("delta", { text }));
+        const chunk = parseChunk(payload);
+        if (chunk === null) continue;
+        if (chunk.finishReason !== null) finishReason = chunk.finishReason;
+        if (chunk.usage !== null) usage = chunk.usage;
+        if (chunk.text !== null) {
+          deltas++;
+          send(sse("delta", { text: chunk.text }));
         }
       }
     }
@@ -162,6 +250,8 @@ async function streamLlm(
     decoder.decode(); // затваря decoder-а (иначе Deno отчита leak)
     reader.releaseLock();
   }
+
+  return { deltas, finishReason, usage };
 }
 
 // --- handler -----------------------------------------------------------------
@@ -238,8 +328,28 @@ export async function handleChat(
         }
 
         const llmMessages = buildMessages(messages, hits);
-        await streamLlm(llmMessages, cfg, send, fetchImpl);
-        send(sse("done", { finish: "stop" }));
+        const result = await streamLlm(llmMessages, cfg, send, fetchImpl);
+
+        // Празен отговор не бива да изглежда като успех: клиентът вижда
+        // meta → done без текст и не знае защо. Причината се казва явно.
+        if (result.deltas === 0) {
+          send(sse("warning", {
+            message: result.finishReason === "length"
+              ? "моделът изчерпа лимита за токени, без да върне текст"
+              : "моделът не върна текст",
+          }));
+        } else if (result.finishReason === "length") {
+          // Отрязан отговор: казваме го, вместо да го представяме за пълен.
+          send(sse("warning", {
+            message: "отговорът е отрязан — достигнат е лимитът за токени",
+          }));
+        }
+
+        send(sse("done", {
+          finish: result.finishReason ?? "stop",
+          deltas: result.deltas,
+          usage: result.usage,
+        }));
       } catch (err) {
         send(sse("error", { message: String(err) }));
       } finally {

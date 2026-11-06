@@ -94,6 +94,10 @@ export function initChat({ root = document, streamChatImpl = streamChat } = {}) 
 
   // Създава балон за съобщение и връща функция за допълване на текста му
   // (използва се при стрийминг на отговора).
+  //
+  // Делтите идват по 1-2 токена — стотици на отговор. Ако пишем в DOM-а и
+  // скролваме при всяка, браузърът прави стотици reflow-а и текстът трепти.
+  // Затова трупаме в буфер и изписваме веднъж на кадър.
   function addBubble(role, text = "") {
     const wrap = document.createElement("div");
     wrap.className = `chat-msg chat-msg--${role}`;
@@ -103,14 +107,40 @@ export function initChat({ root = document, streamChatImpl = streamChat } = {}) 
     wrap.appendChild(body);
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
+
+    let pending = "";
+    let frame = 0;
+
+    function flushNow() {
+      frame = 0;
+      if (pending === "") return;
+      body.textContent += pending;
+      pending = "";
+      log.scrollTop = log.scrollHeight;
+    }
+
     return {
       append(chunk) {
-        body.textContent += chunk;
-        log.scrollTop = log.scrollHeight;
+        pending += chunk;
+        if (frame === 0) frame = requestAnimationFrame(flushNow);
       },
       set(text2) {
+        pending = "";
+        if (frame !== 0) {
+          cancelAnimationFrame(frame);
+          frame = 0;
+        }
         body.textContent = text2;
         log.scrollTop = log.scrollHeight;
+      },
+      // Изписва остатъка веднага — вика се при край на потока, за да не се
+      // загуби последното парче, ако кадърът още не е дошъл.
+      flush() {
+        if (frame !== 0) {
+          cancelAnimationFrame(frame);
+          frame = 0;
+        }
+        flushNow();
       },
       el: wrap,
     };
@@ -167,9 +197,15 @@ export function initChat({ root = document, streamChatImpl = streamChat } = {}) 
 
     if (res.ok && res.done) {
       setStatus("");
+      // Изписваме остатъка от буфера ПРЕДИ да четем текста за историята —
+      // иначе последните делти (до един кадър) се губят от контекста.
+      answer.flush();
       history.push({ role: "assistant", content: answer.el.textContent });
     } else if (res.error) {
+      answer.flush();
       setStatus(`Грешка: ${res.error}`, "error");
+    } else {
+      answer.flush();
     }
 
     controller = null;

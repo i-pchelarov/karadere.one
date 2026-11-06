@@ -26,6 +26,20 @@ function num(env: EnvReader, name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// Списък, разделен със запетая. Празни елементи се изхвърлят.
+function list(env: EnvReader, name: string, fallback: string[] = []): string[] {
+  const v = env(name);
+  if (v === undefined || v === "") return fallback;
+  return v.split(",").map((s) => s.trim()).filter((s) => s !== "");
+}
+
+// Булево от env: "1"/"true"/"yes"/"on" са истина, всичко друго — fallback.
+function bool(env: EnvReader, name: string, fallback: boolean): boolean {
+  const v = env(name);
+  if (v === undefined || v === "") return fallback;
+  return ["1", "true", "yes", "on"].includes(v.trim().toLowerCase());
+}
+
 // --- retrieval настройки -----------------------------------------------------
 export interface RagTuning {
   vectorThreshold: number;
@@ -49,6 +63,18 @@ export const DEFAULT_TUNING: RagTuning = {
   minTermLen: 3,
 };
 
+// OpenRouter приема най-много 3 модела в `models` (основен + резервни).
+// Повече → 400 „'models' array must have 3 items or fewer.“
+export const MAX_MODELS = 3;
+
+// Резервни LLM модели при 429/срив на основния. Само `:free` варианти —
+// платен модел в списъка се таксува при fallback. Броят им + основният
+// не бива да надвишава MAX_MODELS.
+export const DEFAULT_CHAT_FALLBACKS: string[] = [
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+];
+
 // --- зависимости на retrieval слоя -------------------------------------------
 // Всичко, което rag.ts ползва, идва оттук. Тестовете подават фалшив fetch и
 // фалшиви URL-и; продукцията подава истинските.
@@ -66,13 +92,19 @@ export interface RagDeps {
 export interface AppConfig {
   supabase: { url: string; anonKey: string };
   openRouter: { apiKey: string; base: string };
-  models: { chat: string; embed: string; embedDimensions: number };
+  models: {
+    chat: string;
+    chatFallbacks: string[];
+    embed: string;
+    embedDimensions: number;
+  };
   rag: RagTuning;
   limits: {
     maxMessages: number;
     maxMessageChars: number;
     maxTokens: number;
     topK: number;
+    reasoning: boolean;
   };
   cors: { allowedOrigin: string };
   turnstile: { secretKey: string };
@@ -90,6 +122,7 @@ export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
     },
     models: {
       chat: str(env, "CHAT_LLM_MODEL", "google/gemma-4-26b-a4b-it:free"),
+      chatFallbacks: list(env, "CHAT_LLM_FALLBACKS", DEFAULT_CHAT_FALLBACKS),
       embed: str(env, "CHAT_EMBED_MODEL", "openai/text-embedding-3-small"),
       embedDimensions: num(env, "CHAT_EMBED_DIMENSIONS", 768),
     },
@@ -106,8 +139,12 @@ export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
     limits: {
       maxMessages: num(env, "CHAT_MAX_MESSAGES", 20),
       maxMessageChars: num(env, "CHAT_MAX_MESSAGE_CHARS", 4000),
-      maxTokens: num(env, "CHAT_MAX_TOKENS", 1200),
+      maxTokens: num(env, "CHAT_MAX_TOKENS", 2000),
       topK: num(env, "CHAT_TOP_K", 6),
+      // Reasoning токените се броят към max_tokens и при малък лимит моделът
+      // изразходва всичко за „мислене“ и връща отрязан отговор с
+      // finish_reason: "length". За кратък правен отговор не ни трябват.
+      reasoning: bool(env, "CHAT_REASONING", false),
     },
     cors: {
       allowedOrigin: str(env, "CHAT_ALLOWED_ORIGIN", "https://karadere.one"),

@@ -7,7 +7,7 @@
 import { assert, assertEquals, assertStringIncludes } from "./test_assert.ts";
 import { handleChat, modelChain, type HandlerOverrides } from "./index.ts";
 import type { AppConfig } from "./config.ts";
-import { DEFAULT_TUNING } from "./config.ts";
+import { DEFAULT_RETRY_CONFIG, DEFAULT_TUNING } from "./config.ts";
 import { makeMockDeps } from "./test_mock.ts";
 
 function testConfig(): AppConfig {
@@ -22,6 +22,7 @@ function testConfig(): AppConfig {
     },
     rag: DEFAULT_TUNING,
     limits: { maxMessages: 20, maxMessageChars: 4000, maxTokens: 1200, topK: 5, reasoning: false },
+    retry: { ...DEFAULT_RETRY_CONFIG },
     cors: { allowedOrigin: "https://karadere.one" },
     turnstile: { secretKey: "" },
   };
@@ -158,7 +159,13 @@ Deno.test("e2e: грешка В ПОТОКА на LLM стига до клиен
   const names = events.map((e) => e.event);
   assert(names.includes("error"), "грешката в потока трябва да стигне като error");
   const err = events.find((e) => e.event === "error")!.data as { message: string };
-  assertStringIncludes(err.message, "upstream rate-limited");
+  // Клиентът вижда безопасното съобщение, не суровия текст от доставчика.
+  assertStringIncludes(err.message, "моделът върна грешка");
+  assertEquals(
+    err.message.includes("upstream rate-limited"),
+    false,
+    "суровият текст от доставчика не бива да изтича към клиента",
+  );
   assertEquals(names.includes("done"), false, "не бива да има done след error");
 });
 
@@ -374,4 +381,76 @@ Deno.test("e2e: заявката към LLM праща `models` масив, не
   const body = captured.body as { models?: string[]; model?: string };
   assertEquals(body.models, ["mock/chat", "mock/chat-2", "mock/chat-3"]);
   assertEquals(body.model, undefined, "не бива да праща `model` заедно с `models`");
+});
+
+Deno.test("e2e: 429 от LLM се повтаря и потокът успява", async () => {
+  const mock = makeMockDeps();
+  let llmCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      llmCalls++;
+      if (llmCalls === 1) {
+        return new Response("rate limited", { status: 429, headers: { "Retry-After": "0" } });
+      }
+      return new Response(
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "готово" } }] })}\n\ndata: [DONE]\n\n`,
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      );
+    }
+    return await mock.fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl, retry: { sleep: () => Promise.resolve(), random: () => 0 } },
+  );
+  const events = await readSse(resp);
+  const names = events.map((e) => e.event);
+  assertEquals(llmCalls, 2, "трябва да има точно един повторен опит");
+  assert(names.includes("done"), "потокът трябва да завърши с done");
+  assertEquals(names.includes("error"), false, "не бива да има error след успешен retry");
+  const text = events.filter((e) => e.event === "delta")
+    .map((e) => (e.data as { text: string }).text).join("");
+  assertEquals(text, "готово");
+});
+
+Deno.test("e2e: meta дедупликира номерата на членовете", async () => {
+  // Корпус, в който два различни реда носят един и същ номер на член — точно
+  // каквото дава хибридният retrieval (вектор + keyword за един и същ член).
+  const corpus = [
+    {
+      id: "v-1",
+      document_id: "zuchk",
+      title: "Чл. 10а. Лагеруване",
+      content: "Лагеруването на плажа е забранено.",
+      metadata: { article_number: "10а" },
+    },
+    {
+      id: "k-1",
+      document_id: "zuchk",
+      title: "Чл. 10а. Лагеруване (дубликат)",
+      content: "Лагеруването на плажа е забранено.",
+      metadata: { article_number: "10а" },
+    },
+  ];
+  const mock = makeMockDeps({ corpus });
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      return new Response(
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "ок" } }] })}\n\ndata: [DONE]\n\n`,
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      );
+    }
+    return await mock.fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: testConfig(), fetch: fetchImpl },
+  );
+  const events = await readSse(resp);
+  const meta = events.find((e) => e.event === "meta")!.data as { articles: string[] };
+  assertEquals(meta.articles, ["10а"], "един и същ член не бива да се повтаря в meta");
 });

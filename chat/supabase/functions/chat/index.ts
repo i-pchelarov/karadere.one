@@ -17,7 +17,9 @@
 import { loadConfig, ragDeps, MAX_MODELS, type AppConfig } from "./config.ts";
 import { runQuery, type Hit, type Mode } from "./rag.ts";
 import { checkRateLimit } from "./ratelimit.ts";
-import { articleOf, buildMessages, type ChatMessage } from "./prompt.ts";
+import { buildMessages, uniqueArticles, type ChatMessage } from "./prompt.ts";
+import { fetchWithRetry, type RetryDeps } from "./retry.ts";
+import { ChatError, publicMessageOf } from "./errors.ts";
 
 // --- конфигурация (лениво, веднъж) -------------------------------------------
 let cachedConfig: AppConfig | null = null;
@@ -142,7 +144,8 @@ function parseChunk(payload: string): ParsedChunk | null {
   }
   if (parsed.error) {
     const msg = parsed.error.message ?? JSON.stringify(parsed.error);
-    throw new Error(`LLM stream error: ${msg}`);
+    // Суровият текст остава в `detail` (лог); клиентът вижда само общото.
+    throw new ChatError("моделът върна грешка по време на потока", `LLM stream error: ${msg}`);
   }
   const choice = parsed.choices?.[0];
   const text = choice?.delta?.content;
@@ -164,29 +167,39 @@ async function streamLlm(
   cfg: AppConfig,
   send: (chunk: Uint8Array) => void,
   fetchImpl: typeof fetch = fetch,
+  retryDeps: RetryDeps = {},
 ): Promise<LlmResult> {
-  const resp = await fetchImpl(`${cfg.openRouter.base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${cfg.openRouter.apiKey}`,
-      "Content-Type": "application/json",
+  const resp = await fetchWithRetry(
+    fetchImpl,
+    `${cfg.openRouter.base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${cfg.openRouter.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        models: modelChain(cfg),
+        messages,
+        stream: true,
+        max_tokens: cfg.limits.maxTokens,
+        // Reasoning токените се броят към max_tokens. При кратък правен отговор
+        // те само изяждат бюджета и отговорът излиза отрязан.
+        ...(cfg.limits.reasoning ? {} : { reasoning: { enabled: false } }),
+        // За да виждаме колко е отишло за „мислене“ и колко за текст.
+        usage: { include: true },
+      }),
     },
-    body: JSON.stringify({
-      models: modelChain(cfg),
-      messages,
-      stream: true,
-      max_tokens: cfg.limits.maxTokens,
-      // Reasoning токените се броят към max_tokens. При кратък правен отговор
-      // те само изяждат бюджета и отговорът излиза отрязан.
-      ...(cfg.limits.reasoning ? {} : { reasoning: { enabled: false } }),
-      // За да виждаме колко е отишло за „мислене“ и колко за текст.
-      usage: { include: true },
-    }),
-  });
+    cfg.retry,
+    retryDeps,
+  );
 
   if (!resp.ok || !resp.body) {
     const detail = resp.body ? (await resp.text()).slice(0, 300) : "<no body>";
-    throw new Error(`LLM HTTP ${resp.status}: ${detail}`);
+    throw new ChatError(
+      "услугата за модела е временно недостъпна",
+      `LLM HTTP ${resp.status}: ${detail}`,
+    );
   }
 
   // Предпазна мрежа: ако доставчикът върне обикновен JSON вместо SSE поток
@@ -201,17 +214,26 @@ async function streamLlm(
     try {
       parsed = JSON.parse(raw);
     } catch {
-      throw new Error(`LLM върна не-SSE отговор: ${raw.slice(0, 300)}`);
+      throw new ChatError(
+        "моделът върна неочакван отговор",
+        `LLM върна не-SSE отговор: ${raw.slice(0, 300)}`,
+      );
     }
     if (parsed.error) {
-      throw new Error(`LLM error: ${parsed.error.message ?? raw.slice(0, 300)}`);
+      throw new ChatError(
+        "моделът върна грешка",
+        `LLM error: ${parsed.error.message ?? raw.slice(0, 300)}`,
+      );
     }
     const text = parsed.choices?.[0]?.message?.content;
     if (typeof text === "string" && text.length > 0) {
       send(sse("delta", { text }));
       return { deltas: 1, finishReason: "stop", usage: null };
     }
-    throw new Error(`LLM върна JSON без съдържание: ${raw.slice(0, 300)}`);
+    throw new ChatError(
+      "моделът върна празен отговор",
+      `LLM върна JSON без съдържание: ${raw.slice(0, 300)}`,
+    );
   }
 
   const reader = resp.body.getReader();
@@ -260,6 +282,7 @@ async function streamLlm(
 export interface HandlerOverrides {
   fetch?: typeof fetch;
   config?: AppConfig;
+  retry?: RetryDeps;
 }
 
 export async function handleChat(
@@ -317,7 +340,7 @@ export async function handleChat(
           const result = await runQuery(question, cfg.limits.topK, mode, deps);
           hits = result.hits;
           send(sse("meta", {
-            articles: hits.map(articleOf).filter((a): a is string => a !== null),
+            articles: uniqueArticles(hits),
             hits: hits.length,
             trace: result.trace,
           }));
@@ -328,7 +351,7 @@ export async function handleChat(
         }
 
         const llmMessages = buildMessages(messages, hits);
-        const result = await streamLlm(llmMessages, cfg, send, fetchImpl);
+        const result = await streamLlm(llmMessages, cfg, send, fetchImpl, overrides.retry);
 
         // Празен отговор не бива да изглежда като успех: клиентът вижда
         // meta → done без текст и не знае защо. Причината се казва явно.
@@ -351,7 +374,12 @@ export async function handleChat(
           usage: result.usage,
         }));
       } catch (err) {
-        send(sse("error", { message: String(err) }));
+        // Суровият текст (тяло от доставчик, метаданни) остава в лога; към
+        // клиента излиза само безопасното съобщение.
+        console.error("chat: необработена грешка:", err);
+        send(sse("error", {
+          message: publicMessageOf(err, "възникна вътрешна грешка"),
+        }));
       } finally {
         controller.close();
       }

@@ -32,6 +32,21 @@ export function articleOf(hit: Hit): string | null {
   return cleaned === "" ? null : cleaned;
 }
 
+// Номерата на намерените членове, без повторения и без празни стойности.
+// Хибридният retrieval може да върне един и същ член и по векторния, и по
+// keyword пътя; в `meta` той трябва да се появи веднъж.
+export function uniqueArticles(hits: Hit[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const hit of hits) {
+    const article = articleOf(hit);
+    if (article === null || seen.has(article)) continue;
+    seen.add(article);
+    out.push(article);
+  }
+  return out;
+}
+
 // Сглобява извадките в четим за модела блок. Номерирани са, за да може
 // моделът да цитира по номер, а не да преписва заглавия.
 export function buildContext(hits: Hit[]): string {

@@ -1,7 +1,13 @@
 // Тестове за сглобяването на промпта — чисти функции, без мрежа.
 
 import { assert, assertEquals, assertStringIncludes } from "./test_assert.ts";
-import { articleOf, buildContext, buildMessages, SYSTEM_PROMPT } from "./prompt.ts";
+import {
+  articleOf,
+  buildContext,
+  buildMessages,
+  SYSTEM_PROMPT,
+  uniqueArticles,
+} from "./prompt.ts";
 import type { Hit } from "./rag.ts";
 
 function hit(over: Partial<Hit> = {}): Hit {
@@ -63,6 +69,29 @@ Deno.test("buildMessages пази историята непокътната", ()
   const msgs = buildMessages(history, []);
   assertEquals(msgs.length, 4);
   assertEquals(msgs.slice(1), history);
+});
+
+Deno.test("uniqueArticles маха повторенията и празните", () => {
+  const hits = [
+    hit({ id: "a", metadata: { article_number: "10а" } }),
+    hit({ id: "b", metadata: { article_number: "10а" } }), // дубликат
+    hit({ id: "c", metadata: { article_number: "17а" } }),
+    hit({ id: "d", metadata: {} }), // без номер
+  ];
+  assertEquals(uniqueArticles(hits), ["10а", "17а"]);
+});
+
+Deno.test("uniqueArticles пази реда на първата поява", () => {
+  const hits = [
+    hit({ id: "a", metadata: { article_number: "17а" } }),
+    hit({ id: "b", metadata: { article_number: "10а" } }),
+    hit({ id: "c", metadata: { article_number: "17а" } }),
+  ];
+  assertEquals(uniqueArticles(hits), ["17а", "10а"]);
+});
+
+Deno.test("uniqueArticles е празен без попадения", () => {
+  assertEquals(uniqueArticles([]), []);
 });
 
 Deno.test("assert работи", () => {

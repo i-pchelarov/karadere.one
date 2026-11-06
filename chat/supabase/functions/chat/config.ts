@@ -67,6 +67,19 @@ export const DEFAULT_TUNING: RagTuning = {
 // Повече → 400 „'models' array must have 3 items or fewer.“
 export const MAX_MODELS = 3;
 
+// Повторен опит при 429/5xx от OpenRouter. `attempts` включва първия опит.
+export interface RetryConfig {
+  attempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+}
+
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  attempts: 3,
+  baseDelayMs: 500,
+  maxDelayMs: 4000,
+};
+
 // Резервни LLM модели при 429/срив на основния. Само `:free` варианти —
 // платен модел в списъка се таксува при fallback. Броят им + основният
 // не бива да надвишава MAX_MODELS.
@@ -106,6 +119,7 @@ export interface AppConfig {
     topK: number;
     reasoning: boolean;
   };
+  retry: RetryConfig;
   cors: { allowedOrigin: string };
   turnstile: { secretKey: string };
 }
@@ -145,6 +159,11 @@ export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
       // изразходва всичко за „мислене“ и връща отрязан отговор с
       // finish_reason: "length". За кратък правен отговор не ни трябват.
       reasoning: bool(env, "CHAT_REASONING", false),
+    },
+    retry: {
+      attempts: num(env, "CHAT_RETRY_ATTEMPTS", DEFAULT_RETRY_CONFIG.attempts),
+      baseDelayMs: num(env, "CHAT_RETRY_BASE_MS", DEFAULT_RETRY_CONFIG.baseDelayMs),
+      maxDelayMs: num(env, "CHAT_RETRY_MAX_MS", DEFAULT_RETRY_CONFIG.maxDelayMs),
     },
     cors: {
       allowedOrigin: str(env, "CHAT_ALLOWED_ORIGIN", "https://karadere.one"),

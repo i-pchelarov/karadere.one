@@ -1,8 +1,8 @@
 {
   "imports": {},
   "tasks": {
-    "check": "deno check index.ts rag.ts prompt.ts ratelimit.ts config.ts",
-    "test": "deno test --allow-env --allow-net --allow-read rag_test.ts prompt_test.ts index_test.ts"
+    "check": "deno check index.ts rag.ts prompt.ts ratelimit.ts turnstile.ts retry.ts errors.ts config.ts",
+    "test": "deno test --allow-env --allow-net --allow-read rag_test.ts prompt_test.ts retry_test.ts ratelimit_test.ts turnstile_test.ts index_test.ts"
   },
   "compilerOptions": {
     "strict": true,

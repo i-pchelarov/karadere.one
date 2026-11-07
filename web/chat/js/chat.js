@@ -13,11 +13,35 @@ import { streamChat } from "./sse.js";
 export const MAX_HISTORY = 20;
 
 // Подготвя тялото на заявката към Edge Function.
-export function buildRequestBody(history, mode = "auto") {
-  return {
+// `turnstileToken` е незадължителен: когато widget-ът не е конфигуриран
+// (локално), полето просто отсъства и бекендът прескача проверката.
+export function buildRequestBody(history, mode = "auto", turnstileToken = "") {
+  const body = {
     messages: history.map((m) => ({ role: m.role, content: m.content })),
     mode,
   };
+  if (typeof turnstileToken === "string" && turnstileToken !== "") {
+    body.turnstileToken = turnstileToken;
+  }
+  return body;
+}
+
+// Чете текущия Turnstile токен. Widget-ът рендира скрит input
+// `cf-turnstile-response` вътре в контейнера; той носи еднократния токен.
+// Връща "", ако widget няма (локално) — тогава бекендът не изисква токен.
+export function readTurnstileToken(root = document) {
+  const el = root.querySelector?.('input[name="cf-turnstile-response"]');
+  return el && typeof el.value === "string" ? el.value : "";
+}
+
+// Нулира Turnstile widget-а. Токенът е еднократен — след всяка заявка трябва
+// нов, иначе следващата ще бъде отказана с 403. Безопасно е и когато widget
+// липсва (локално): тогава просто няма какво да нулираме.
+export function resetTurnstile(root = document) {
+  const el = root.getElementById?.("chat-turnstile");
+  if (!el) return;
+  const api = globalThis.turnstile;
+  if (api && typeof api.reset === "function") api.reset(el);
 }
 
 // Пази само последните `max` съобщения — по-старата история не помага и само
@@ -169,7 +193,7 @@ export function initChat({ root = document, streamChatImpl = streamChat } = {}) 
 
     const res = await streamChatImpl({
       url: endpoint,
-      body: buildRequestBody(trimHistory(history)),
+      body: buildRequestBody(trimHistory(history), "auto", readTurnstileToken(root)),
       signal: controller.signal,
       onMeta: (meta) => {
         articles = mergeArticles(articles, meta.articles ?? []);
@@ -210,6 +234,8 @@ export function initChat({ root = document, streamChatImpl = streamChat } = {}) 
 
     controller = null;
     setStreaming(false);
+    // Токенът е изразходван — взимаме нов за следващия въпрос.
+    resetTurnstile(root);
     input.focus();
   }
 

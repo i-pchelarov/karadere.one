@@ -8,7 +8,7 @@
 //   deno test --allow-env --allow-net --allow-read chat_test.js
 // (от директорията web/chat/js)
 
-import { buildRequestBody, mergeArticles, trimHistory } from "./chat.js";
+import { buildRequestBody, mergeArticles, readTurnstileToken, trimHistory } from "./chat.js";
 import {
   assert,
   assertEquals,
@@ -73,4 +73,27 @@ Deno.test("mergeArticles: не мутира предишния масив", () =
   const prev = ["1"];
   mergeArticles(prev, ["2"]);
   assertEquals(prev, ["1"]);
+});
+
+Deno.test("buildRequestBody: добавя turnstile токен, когато има", () => {
+  const body = buildRequestBody([{ role: "user", content: "в" }], "auto", "tok-1");
+  assertEquals(body.turnstileToken, "tok-1");
+});
+
+Deno.test("buildRequestBody: без токен полето отсъства", () => {
+  const body = buildRequestBody([{ role: "user", content: "в" }]);
+  assert(!("turnstileToken" in body), "празен токен не бива да се праща");
+});
+
+Deno.test("readTurnstileToken: чете скрития input на widget-а", () => {
+  const fakeRoot = {
+    querySelector: (sel) =>
+      sel === 'input[name="cf-turnstile-response"]' ? { value: "tok-abc" } : null,
+  };
+  assertEquals(readTurnstileToken(fakeRoot), "tok-abc");
+});
+
+Deno.test("readTurnstileToken: без widget връща празен низ", () => {
+  const fakeRoot = { querySelector: () => null };
+  assertEquals(readTurnstileToken(fakeRoot), "");
 });

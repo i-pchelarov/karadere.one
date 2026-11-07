@@ -40,7 +40,7 @@ jobs:
           node-version: "20"
 
       - name: Syntax-check Python modules
-        run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/ingest_pdf.py rag/test_rag_query.py rag/test_ingest_pdf.py
+        run: python3 -m py_compile rag/rag_query.py rag/ingest_text.py rag/ingest_pdf.py rag/test_rag_query.py rag/test_ingest_pdf.py rag/appendices/make_boundary_map.py rag/appendices/test_make_boundary_map.py
 
       - name: Install test dependencies
         run: python3 -m pip install --quiet -r rag/requirements.txt
@@ -68,3 +68,8 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python3 rag/test_ingest_pdf.py
+
+      # The boundary-map renderer is pure stdlib and hermetic (it builds its own
+      # register and runs with --source none), so it needs no network or keys.
+      - name: Run boundary-map tests
+        run: python3 rag/appendices/test_make_boundary_map.py

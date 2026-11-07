@@ -71,6 +71,19 @@
                 <p class="chat-hint">
                     Enter праща · Shift+Enter е нов ред
                 </p>
+
+                <!-- Cloudflare Turnstile: невидим/управляван widget. Site key е
+                     публичен (не е тайна) и идва от _config.yml. Ако е празен,
+                     widget-ът не се зарежда и бекендът прескача проверката
+                     (локална разработка). -->
+                {% if site.chat.turnstile_site_key and site.chat.turnstile_site_key != "" %}
+                <div id="chat-turnstile"
+                     class="cf-turnstile"
+                     data-sitekey="{{ site.chat.turnstile_site_key }}"
+                     data-action="chat"
+                     data-size="flexible"></div>
+                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                {% endif %}
             </div>
 
         </div>

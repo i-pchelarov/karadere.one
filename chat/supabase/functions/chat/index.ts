@@ -1,6 +1,6 @@
 // Edge Function `chat` — e2e поток:
-//   валидация → rate limit → retrieval → системен промпт + контекст →
-//   LLM (OpenRouter) → SSE стрийминг към клиента.
+//   валидация → Turnstile → rate limit → retrieval → системен промпт +
+//   контекст → LLM (OpenRouter) → SSE стрийминг към клиента.
 //
 // Публичен endpoint (verify_jwt = false). Конфигурацията идва само от env
 // (config.ts). Нищо не се хардкодва.
@@ -16,7 +16,8 @@
 
 import { loadConfig, ragDeps, MAX_MODELS, type AppConfig } from "./config.ts";
 import { runQuery, type Hit, type Mode } from "./rag.ts";
-import { checkRateLimit } from "./ratelimit.ts";
+import { checkRateLimit, clientIp } from "./ratelimit.ts";
+import { verifyTurnstile } from "./turnstile.ts";
 import { buildMessages, uniqueArticles, type ChatMessage } from "./prompt.ts";
 import { fetchWithRetry, type RetryDeps } from "./retry.ts";
 import { ChatError, publicMessageOf } from "./errors.ts";
@@ -29,9 +30,20 @@ function config(): AppConfig {
 }
 
 // --- CORS --------------------------------------------------------------------
-function corsHeaders(cfg: AppConfig): Record<string, string> {
+// Allowlist, не един origin: локалният Jekyll сървър и продукцията трябва да
+// работят едновременно. Ехо на Origin-а само ако е в списъка — иначе браузърът
+// получава отговор без Access-Control-Allow-Origin и блокира четенето.
+function allowedOrigin(cfg: AppConfig, req?: Request): string {
+  const origin = req?.headers.get("Origin") ?? "";
+  if (origin !== "" && cfg.cors.allowedOrigins.includes(origin)) return origin;
+  // Няма Origin (curl, сървър-към-сървър) или непознат: връщаме първия
+  // разрешен, за да остане отговорът валиден за предварителната заявка.
+  return cfg.cors.allowedOrigins[0] ?? "";
+}
+
+function corsHeaders(cfg: AppConfig, req?: Request): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": cfg.cors.allowedOrigin,
+    "Access-Control-Allow-Origin": allowedOrigin(cfg, req),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -39,10 +51,15 @@ function corsHeaders(cfg: AppConfig): Record<string, string> {
   };
 }
 
-function jsonError(message: string, status: number, cfg: AppConfig): Response {
+function jsonError(
+  message: string,
+  status: number,
+  cfg: AppConfig,
+  req?: Request,
+): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
-    headers: { ...corsHeaders(cfg), "Content-Type": "application/json" },
+    headers: { ...corsHeaders(cfg, req), "Content-Type": "application/json" },
   });
 }
 
@@ -53,6 +70,7 @@ interface Validated {
   messages: ChatMessage[];
   question: string;
   mode: Mode;
+  turnstileToken: string | undefined;
 }
 
 // Връща Validated при успех или текст на грешката (string) при невалидна заявка.
@@ -85,12 +103,26 @@ function validate(body: unknown, cfg: AppConfig): Validated | string {
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUser) return "няма потребителско съобщение";
 
+  // Общ таван на контекста: много съобщения под поединичния лимит пак могат
+  // да надуят заявката. Броим знаците, не токените — точно и без зависимост
+  // от tokenizer.
+  const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+  if (totalChars > cfg.limits.maxTotalChars) {
+    return `историята е твърде дълга (макс ${cfg.limits.maxTotalChars} знака)`;
+  }
+
   const modeRaw = obj.mode;
   const mode: Mode = modeRaw === "vector" || modeRaw === "keyword"
     ? modeRaw
     : "auto";
 
-  return { messages, question: lastUser.content, mode };
+  // Turnstile токенът идва от widget-а на фронтенда. Не е задължителен тук —
+  // проверката решава дали да го изисква (само когато е конфигуриран secret).
+  const turnstileToken = typeof obj.turnstileToken === "string"
+    ? obj.turnstileToken
+    : undefined;
+
+  return { messages, question: lastUser.content, mode, turnstileToken };
 }
 
 // --- SSE ---------------------------------------------------------------------
@@ -283,6 +315,9 @@ export interface HandlerOverrides {
   fetch?: typeof fetch;
   config?: AppConfig;
   retry?: RetryDeps;
+  // Инжектируем за тестове: проверката на Turnstile и лимитерът иначе биха
+  // искали мрежа. Продукцията не ги подава.
+  verifyTurnstile?: typeof verifyTurnstile;
 }
 
 export async function handleChat(
@@ -293,33 +328,49 @@ export async function handleChat(
   const fetchImpl = overrides.fetch ?? fetch;
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(cfg) });
+    return new Response(null, { status: 204, headers: corsHeaders(cfg, req) });
   }
   if (req.method !== "POST") {
-    return jsonError("методът не се поддържа", 405, cfg);
+    return jsonError("методът не се поддържа", 405, cfg, req);
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return jsonError("невалиден JSON", 400, cfg);
+    return jsonError("невалиден JSON", 400, cfg, req);
   }
 
   const validated = validate(body, cfg);
-  if (typeof validated === "string") return jsonError(validated, 400, cfg);
-  const { messages, question, mode } = validated;
+  if (typeof validated === "string") return jsonError(validated, 400, cfg, req);
+  const { messages, question, mode, turnstileToken } = validated;
 
   const deps = ragDeps(cfg, fetchImpl);
+  const ip = clientIp(req);
+
+  // Turnstile ПРЕДИ rate limit-а: проверката е евтина (един HTTP до Cloudflare)
+  // и реже автоматизирания шум, преди да е похарчил квота от лимитера.
+  const verify = overrides.verifyTurnstile ?? verifyTurnstile;
+  const human = await verify(turnstileToken, ip, {
+    fetch: fetchImpl,
+    secretKey: cfg.turnstile.secretKey,
+    expectedAction: cfg.turnstile.expectedAction,
+    expectedHostnames: cfg.turnstile.hostnames,
+  });
+  if (!human.ok) {
+    console.error("chat: turnstile отказа:", human.reason);
+    return jsonError("проверката за човек не мина", 403, cfg, req);
+  }
 
   const limit = await checkRateLimit(req, {
     fetch: deps.fetch,
     supabaseUrl: deps.supabaseUrl,
-    supabaseAnonKey: deps.supabaseAnonKey,
+    serviceRoleKey: cfg.serviceRoleKey,
+    config: cfg.rateLimit,
   });
   if (!limit.allowed) {
     const headers: Record<string, string> = {
-      ...corsHeaders(cfg),
+      ...corsHeaders(cfg, req),
       "Content-Type": "application/json",
     };
     if (limit.retryAfterSeconds !== undefined) {
@@ -389,7 +440,7 @@ export async function handleChat(
   return new Response(stream, {
     status: 200,
     headers: {
-      ...corsHeaders(cfg),
+      ...corsHeaders(cfg, req),
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",

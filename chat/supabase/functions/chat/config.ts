@@ -88,6 +88,25 @@ export const DEFAULT_CHAT_FALLBACKS: string[] = [
   "nvidia/nemotron-3-ultra-550b-a55b:free",
 ];
 
+// Ограничение на честотата по IP (Ф.4). Фиксиран прозорец от секунди и праг
+// заявки в него. 0 изключва лимита (полезно за локални тестове).
+export interface RateLimitConfig {
+  windowSeconds: number;
+  limit: number;
+}
+
+export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
+  windowSeconds: 60,
+  limit: 20,
+};
+
+// Разрешени origins за CORS (Ф.4). Списък, не един низ: локалният Jekyll
+// сървър и продукцията трябва да работят едновременно, без да се пипа код.
+export const DEFAULT_ALLOWED_ORIGINS: string[] = [
+  "https://karadere.one",
+  "https://www.karadere.one",
+];
+
 // --- зависимости на retrieval слоя -------------------------------------------
 // Всичко, което rag.ts ползва, идва оттук. Тестовете подават фалшив fetch и
 // фалшиви URL-и; продукцията подава истинските.
@@ -115,13 +134,26 @@ export interface AppConfig {
   limits: {
     maxMessages: number;
     maxMessageChars: number;
+    // Общ таван на знаците в цялата история. Пази от много дълги истории,
+    // които минават поединичните лимити, но надуват контекста и цената.
+    maxTotalChars: number;
     maxTokens: number;
     topK: number;
     reasoning: boolean;
   };
   retry: RetryConfig;
-  cors: { allowedOrigin: string };
-  turnstile: { secretKey: string };
+  cors: { allowedOrigins: string[] };
+  turnstile: {
+    secretKey: string;
+    // Очаквано действие (data-action на widget-а). Празно = без проверка.
+    expectedAction: string;
+    // Разрешени hostname-и от siteverify. Празен списък = без проверка.
+    hostnames: string[];
+  };
+  rateLimit: RateLimitConfig;
+  // Ключ за RPC-то на лимитера. Supabase инжектира SUPABASE_SERVICE_ROLE_KEY
+  // автоматично; празен низ изключва лимита (локално без ключ).
+  serviceRoleKey: string;
 }
 
 export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
@@ -153,6 +185,7 @@ export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
     limits: {
       maxMessages: num(env, "CHAT_MAX_MESSAGES", 20),
       maxMessageChars: num(env, "CHAT_MAX_MESSAGE_CHARS", 4000),
+      maxTotalChars: num(env, "CHAT_MAX_TOTAL_CHARS", 24000),
       maxTokens: num(env, "CHAT_MAX_TOKENS", 2000),
       topK: num(env, "CHAT_TOP_K", 6),
       // Reasoning токените се броят към max_tokens и при малък лимит моделът
@@ -166,11 +199,31 @@ export function loadConfig(env: EnvReader = defaultEnv): AppConfig {
       maxDelayMs: num(env, "CHAT_RETRY_MAX_MS", DEFAULT_RETRY_CONFIG.maxDelayMs),
     },
     cors: {
-      allowedOrigin: str(env, "CHAT_ALLOWED_ORIGIN", "https://karadere.one"),
+      // CHAT_ALLOWED_ORIGINS е списък, разделен със запетая. Пазим и старото
+      // име CHAT_ALLOWED_ORIGIN за обратна съвместимост с вече зададени секрети.
+      allowedOrigins: list(
+        env,
+        "CHAT_ALLOWED_ORIGINS",
+        list(env, "CHAT_ALLOWED_ORIGIN", DEFAULT_ALLOWED_ORIGINS),
+      ),
     },
     turnstile: {
       secretKey: env("TURNSTILE_SECRET_KEY") ?? "",
+      // Действието идва от data-action на widget-а; по подразбиране "chat".
+      expectedAction: env("TURNSTILE_ACTION") ?? "chat",
+      // Продукция: karadere.one,www.karadere.one. Локално (в .env.local):
+      // localhost,127.0.0.1. Празно = проверката се прескача.
+      hostnames: list(env, "TURNSTILE_HOSTNAMES"),
     },
+    rateLimit: {
+      windowSeconds: num(
+        env,
+        "CHAT_RATE_LIMIT_WINDOW_SECONDS",
+        DEFAULT_RATE_LIMIT.windowSeconds,
+      ),
+      limit: num(env, "CHAT_RATE_LIMIT_PER_WINDOW", DEFAULT_RATE_LIMIT.limit),
+    },
+    serviceRoleKey: env("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   };
 }
 

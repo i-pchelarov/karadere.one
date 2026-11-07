@@ -7,7 +7,7 @@
 import { assert, assertEquals, assertStringIncludes } from "./test_assert.ts";
 import { handleChat, modelChain, type HandlerOverrides } from "./index.ts";
 import type { AppConfig } from "./config.ts";
-import { DEFAULT_RETRY_CONFIG, DEFAULT_TUNING } from "./config.ts";
+import { DEFAULT_RATE_LIMIT, DEFAULT_RETRY_CONFIG, DEFAULT_TUNING } from "./config.ts";
 import { makeMockDeps } from "./test_mock.ts";
 
 function testConfig(): AppConfig {
@@ -21,10 +21,19 @@ function testConfig(): AppConfig {
       embedDimensions: 768,
     },
     rag: DEFAULT_TUNING,
-    limits: { maxMessages: 20, maxMessageChars: 4000, maxTokens: 1200, topK: 5, reasoning: false },
+    limits: {
+      maxMessages: 20,
+      maxMessageChars: 4000,
+      maxTotalChars: 24000,
+      maxTokens: 1200,
+      topK: 5,
+      reasoning: false,
+    },
     retry: { ...DEFAULT_RETRY_CONFIG },
-    cors: { allowedOrigin: "https://karadere.one" },
-    turnstile: { secretKey: "" },
+    cors: { allowedOrigins: ["https://karadere.one"] },
+    turnstile: { secretKey: "", expectedAction: "chat", hostnames: [] },
+    rateLimit: { ...DEFAULT_RATE_LIMIT },
+    serviceRoleKey: "",
   };
 }
 
@@ -453,4 +462,166 @@ Deno.test("e2e: meta дедупликира номерата на членове
   const events = await readSse(resp);
   const meta = events.find((e) => e.event === "meta")!.data as { articles: string[] };
   assertEquals(meta.articles, ["10а"], "един и същ член не бива да се повтаря в meta");
+});
+
+// --- Ф.4: CORS allowlist -----------------------------------------------------
+
+function postWithOrigin(body: unknown, origin: string): Request {
+  return new Request("https://fn.test/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: origin },
+    body: JSON.stringify(body),
+  });
+}
+
+Deno.test("cors: разрешен origin се ехти обратно", async () => {
+  const overrides: HandlerOverrides = {
+    config: testConfig(),
+    fetch: makeFetch(["ок"]),
+  };
+  const resp = await handleChat(
+    postWithOrigin({ messages: [{ role: "user", content: QUESTION }] }, "https://karadere.one"),
+    overrides,
+  );
+  assertEquals(resp.headers.get("Access-Control-Allow-Origin"), "https://karadere.one");
+  assertEquals(resp.headers.get("Vary"), "Origin");
+});
+
+Deno.test("cors: непознат origin не се ехти", async () => {
+  const overrides: HandlerOverrides = {
+    config: testConfig(),
+    fetch: makeFetch(["ок"]),
+  };
+  const resp = await handleChat(
+    postWithOrigin({ messages: [{ role: "user", content: QUESTION }] }, "https://evil.example"),
+    overrides,
+  );
+  const acao = resp.headers.get("Access-Control-Allow-Origin");
+  assert(acao !== "https://evil.example", "непознат origin не бива да се ехти");
+  assertEquals(acao, "https://karadere.one");
+});
+
+Deno.test("cors: OPTIONS връща 204 с allowlist хедъри", async () => {
+  const req = new Request("https://fn.test/chat", {
+    method: "OPTIONS",
+    headers: { Origin: "https://karadere.one" },
+  });
+  const resp = await handleChat(req, { config: testConfig() });
+  assertEquals(resp.status, 204);
+  assertEquals(resp.headers.get("Access-Control-Allow-Origin"), "https://karadere.one");
+  assertStringIncludes(resp.headers.get("Access-Control-Allow-Methods") ?? "", "POST");
+});
+
+// --- Ф.4: Turnstile ----------------------------------------------------------
+
+Deno.test("turnstile: отказ → 403, потокът не тръгва", async () => {
+  let llmCalled = false;
+  const mock = makeMockDeps();
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/chat/completions")) {
+      llmCalled = true;
+      return new Response("", { status: 200 });
+    }
+    return await mock.fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    {
+      config: testConfig(),
+      fetch: fetchImpl,
+      verifyTurnstile: async () => ({ ok: false, reason: "тест" }),
+    },
+  );
+  assertEquals(resp.status, 403);
+  assertEquals(llmCalled, false, "LLM не бива да се вика при отказана проверка");
+});
+
+Deno.test("turnstile: успех → потокът продължава", async () => {
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    {
+      config: testConfig(),
+      fetch: makeFetch(["ок"]),
+      verifyTurnstile: async () => ({ ok: true }),
+    },
+  );
+  assertEquals(resp.status, 200);
+  const events = await readSse(resp);
+  assertEquals(events[events.length - 1].event, "done");
+});
+
+// --- Ф.4: rate limit ---------------------------------------------------------
+
+Deno.test("rate limit: отказ → 429 с Retry-After", async () => {
+  const cfg = testConfig();
+  cfg.serviceRoleKey = "service-key";
+  cfg.rateLimit = { windowSeconds: 60, limit: 1 };
+
+  const mock = makeMockDeps();
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.includes("/rpc/chat_rate_limit_hit")) {
+      return new Response(
+        JSON.stringify([{ allowed: false, remaining: 0, retry_after_seconds: 37 }]),
+        { status: 200 },
+      );
+    }
+    return await mock.fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: cfg, fetch: fetchImpl },
+  );
+  assertEquals(resp.status, 429);
+  assertEquals(resp.headers.get("Retry-After"), "37");
+});
+
+Deno.test("rate limit: разрешена заявка минава", async () => {
+  const cfg = testConfig();
+  cfg.serviceRoleKey = "service-key";
+
+  const mock = makeMockDeps();
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.includes("/rpc/chat_rate_limit_hit")) {
+      return new Response(
+        JSON.stringify([{ allowed: true, remaining: 19, retry_after_seconds: 0 }]),
+        { status: 200 },
+      );
+    }
+    if (url.endsWith("/chat/completions")) {
+      return new Response(
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "ок" } }] })}\n\ndata: [DONE]\n\n`,
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      );
+    }
+    return await mock.fetch(input as string, init);
+  }) as typeof fetch;
+
+  const resp = await handleChat(
+    post({ messages: [{ role: "user", content: QUESTION }] }),
+    { config: cfg, fetch: fetchImpl },
+  );
+  assertEquals(resp.status, 200);
+});
+
+// --- Ф.4: общ таван на контекста --------------------------------------------
+
+Deno.test("валидация: твърде дълга история → 400", async () => {
+  const cfg = testConfig();
+  cfg.limits.maxTotalChars = 50;
+  const resp = await handleChat(
+    post({
+      messages: [
+        { role: "user", content: "а".repeat(40) },
+        { role: "assistant", content: "б".repeat(40) },
+        { role: "user", content: "в" },
+      ],
+    }),
+    { config: cfg, fetch: makeFetch(["ок"]) },
+  );
+  assertEquals(resp.status, 400);
 });

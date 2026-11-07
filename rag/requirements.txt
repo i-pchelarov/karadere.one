@@ -1,0 +1,12 @@
+# Python dependencies for the RAG pipeline (rag/).
+#
+# Install with:
+#     python3 -m pip install -r rag/requirements.txt
+#
+# Both are pure-Python wheels, so CI needs no system packages.
+
+# HTTP client used by ingest_text.py (Supabase REST + OpenRouter embeddings).
+requests>=2.31
+
+# PDF text extraction used by ingest_pdf.py.
+pypdf>=4.0

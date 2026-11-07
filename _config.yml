@@ -5,3 +5,5 @@ url: "https://karadere.one"
 exclude:
   - README.md
   - .gitignore
+  - rag
+  - chat

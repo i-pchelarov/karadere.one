@@ -107,3 +107,34 @@ match_threshold, match_count)` връща подредени по cosine бли�
   (изчистват `VERIFY_X509_STRICT`, ползват CA bundle-а на проксито). При
   `http.client` `HTTPSConnection` сочи към **проксито**, а `set_tunnel()` — към
   **целта**.
+
+## Тестове
+
+| Файл | Какво проверява |
+| --- | --- |
+| `test_rag_query.py` | Търсенето: къмпинг въпросът намира правилните членове |
+| `test_ingest_pdf.py` | Извличането от PDF: думите не се разпадат на интервали |
+
+```bash
+python3 test_rag_query.py
+python3 test_ingest_pdf.py
+```
+
+`test_ingest_pdf.py` има два слоя:
+
+- **Херметичен** — генерира малък PDF **в паметта** (в git не влиза бинарен
+  файл) с Type0 шрифт `CIDFontType2` **без `/W` и `/DW`** — точно дефектът,
+  който тестът пази. Слой без мрежа и без ключове, върви винаги в CI. Включва
+  и тест, който проверява, че pypdf по подразбиране **все още** разпада думите
+  (иначе fixture-ът е спрял да възпроизвежда бъга).
+- **Жив** — пуска същия `ingest_pdf.py --drive-file <линк> --dry-run`, който
+  операторът пуска ръчно, и проверява резултата (`split: legal`, чист текст,
+  `768`-мерен embedding). Иска Composio CLI и `OPENROUTER_API_KEY`; без тях се
+  **skip-ва**, не пада.
+
+Настройки: `RAG_TEST_DRIVE_URL` (друг Drive PDF), `COMPOSIO_BIN` (път до CLI-я).
+
+### CI
+
+`.github/workflows/rag-tests.yml` пуска и двата теста при промяна в `rag/**`.
+Инсталира `pypdf`; живият Drive тест се skip-ва на runner-а (няма Composio).

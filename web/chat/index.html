@@ -1,0 +1,85 @@
+---
+---
+<!DOCTYPE html>
+<html lang="bg" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат | Природосъобразно Карадере</title>
+    <meta name="description" content="Задай въпрос за защитените територии и Черноморското крайбрежие — отговорите цитират конкретни разпоредби.">
+    <meta name="robots" content="noindex">
+
+    <!-- Tailwind CSS CDN -->
+    {% include tailwind-config.html %}
+
+    <!-- FontAwesome за икони -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Брандова икона -->
+    <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
+    <!-- Персонализиран стил -->
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Стил за чата -->
+    <link rel="stylesheet" href="./css/chat.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+    <!-- Хедър -->
+    {% include header.html %}
+
+    <main class="pt-28 pb-16 min-h-screen">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <header class="mb-6">
+                <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+                    <i class="fa-solid fa-comments text-teal-400"></i>
+                    Питай за Карадере
+                </h1>
+                <p class="mt-2 text-sm text-slate-400">
+                    Отговорите се основават на нормативната база и цитират конкретни разпоредби.
+                    Това не е правен съвет.
+                </p>
+            </header>
+
+            <!-- data-endpoint: URL на Edge Function `chat`. Празно = чатът е
+                 изключен (страницата показва съобщение). Попълва се при деплой. -->
+            <div id="chat-root"
+                 class="chat-root"
+                 data-endpoint="{{ site.chat.endpoint }}">
+
+                <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Разговор"></div>
+
+                <div id="chat-sources" class="chat-sources hidden" aria-label="Цитирани разпоредби"></div>
+
+                <p id="chat-status" class="chat-status" role="status"></p>
+
+                <form id="chat-form" class="chat-form" autocomplete="off">
+                    <label for="chat-input" class="sr-only">Въпрос</label>
+                    <textarea id="chat-input"
+                              class="chat-input"
+                              rows="1"
+                              maxlength="2000"
+                              placeholder="Напр.: Какво забранява Заповед № РД-354 в защитена зона „Карадере“?"
+                              required></textarea>
+                    <button id="chat-send" type="submit" class="chat-btn chat-btn--send" aria-label="Изпрати">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                    <button id="chat-stop" type="button" class="chat-btn chat-btn--stop hidden" aria-label="Спри">
+                        <i class="fa-solid fa-stop"></i>
+                    </button>
+                </form>
+
+                <p class="chat-hint">
+                    Enter праща · Shift+Enter е нов ред
+                </p>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Футър -->
+    {% include footer.html %}
+
+    <!-- SSE клиент + DOM връзка -->
+    <script type="module" src="./js/chat.js"></script>
+</body>
+</html>

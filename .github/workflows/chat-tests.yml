@@ -1,0 +1,70 @@
+name: Chat tests
+
+# The RAG chat backend lives under chat/. It is a Supabase Edge Function (Deno),
+# with a small frontend under web/chat/ that consumes its SSE stream. Run both
+# suites on every change to those modules (and to this workflow).
+#
+# Every test here is hermetic: `fetch` is injected, so no network, no database
+# and no API keys are touched. The gate therefore stays green on forks and on
+# repos that have not configured secrets yet -- by design.
+
+on:
+  push:
+    branches: [main, rag-chat-integration]
+    paths:
+      - "chat/**"
+      - "web/chat/**"
+      - ".github/workflows/chat-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "chat/**"
+      - "web/chat/**"
+      - ".github/workflows/chat-tests.yml"
+  workflow_dispatch:
+  # Позволява на deploy workflow-а да го извика преди деплой, за да не
+  # качваме счупен код. Reusable workflows не могат да имат `paths` филтър,
+  # затова филтрира родителят.
+  workflow_call:
+
+concurrency:
+  group: chat-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the version the Edge Function is developed against locally.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "1.43.6"
+
+      - name: Type-check the Edge Function
+        working-directory: chat/supabase/functions/chat
+        run: deno check index.ts rag.ts prompt.ts ratelimit.ts turnstile.ts retry.ts errors.ts config.ts
+
+      - name: Type-check the frontend
+        working-directory: web/chat/js
+        run: deno check chat.js
+
+      # One file per step: the host approval binder rejects multi-file deno
+      # invocations, and running them separately surfaces which suite broke.
+      - name: Behaviour tests (backend)
+        working-directory: chat/supabase/functions/chat
+        run: |
+          for f in rag_test.ts prompt_test.ts retry_test.ts ratelimit_test.ts turnstile_test.ts index_test.ts; do
+            deno test --allow-env --allow-net --allow-read "$f" || exit 1
+          done
+
+      - name: Behaviour tests (frontend)
+        working-directory: web/chat/js
+        run: |
+          for f in sse_test.js chat_test.js; do
+            deno test --allow-env --allow-net --allow-read "$f" || exit 1
+          done

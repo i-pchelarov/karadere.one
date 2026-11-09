@@ -1,0 +1,54 @@
+name: Deploy chat Edge Function
+
+# Автоматичен деплой на чат функцията при merge в main (или ръчно).
+# Минава САМО след зелени тестове: извиква chat-tests.yml като reusable
+# workflow и деплойва само ако той успее. Така към Supabase никога не тръгва
+# счупен код.
+#
+# Изисква един repo secret, който операторът добавя от терминала си:
+#   gh secret set SUPABASE_ACCESS_TOKEN      # sbp_... от supabase.com/dashboard/account/tokens
+# Секретите на функцията (OPENROUTER_API_KEY и т.н.) вече живеят в Supabase
+# (зададени веднъж с `supabase secrets set`); деплоят ги запазва, не ги пипа.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "chat/supabase/functions/chat/**"
+      - "chat/supabase/config.toml"
+      - ".github/workflows/chat-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: chat-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: wzdneqvfhlznnmtdgrkm
+
+jobs:
+  # Порта: същият набор тестове, който върви на PR-ите.
+  test:
+    uses: ./.github/workflows/chat-tests.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy chat function
+        working-directory: chat
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        # --project-ref explicitly targets the linked project; --yes skips the
+        # interactive confirmation (no TTY on the runner). Runs from chat/ so
+        # the CLI finds supabase/config.toml and supabase/functions/chat.
+        run: supabase functions deploy chat --project-ref "$SUPABASE_PROJECT_REF" --yes

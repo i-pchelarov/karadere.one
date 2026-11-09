@@ -6,3 +6,10 @@ exclude:
   - README.md
   - .gitignore
   - rag
+  - chat
+
+chat:
+  endpoint: "https://wzdneqvfhlznnmtdgrkm.supabase.co/functions/v1/chat"
+  # Публичен Turnstile site key (не е тайна). Празен = widget-ът не се зарежда
+  # и бекендът прескача проверката. Попълва се при деплой.
+  turnstile_site_key: "0x4AAAAAAF3RZRJ-Qn-eEK6m"

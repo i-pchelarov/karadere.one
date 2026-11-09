@@ -13,9 +13,9 @@
     <!-- FontAwesome за икони -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Брандова икона -->
-    <link rel="icon" type="image/svg+xml" href="./web/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
     <!-- Персонализиран стил -->
-    <link rel="stylesheet" href="web/css/style.css">
+    <link rel="stylesheet" href="/web/css/style.css">
 
     <!-- Google Fonts с поддръжка на Кирилица (Pangolin & Caveat) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,9 +28,17 @@
 <!-- Глобален Хедър (Навигация) - незадължително/ако има такъв -->
 {% if site.header != false %}
 <header class="w-full py-4 px-6 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+
     <div class="max-w-6xl mx-auto flex justify-between items-center">
-        <a href="/" class="font-graffiti text-2xl font-bold text-white tracking-wide hover:text-teal-400 transition-colors">
-            Karadere.one
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500 flex items-center justify-center text-teal-400 group-hover:scale-105 transition-transform">
+                <i class="fa-solid font-bold fa-water text-xl"></i>
+            </div>
+            <div>
+                <span class="text-lg font-bold tracking-tight text-white block leading-none">Карадере</span>
+                <span class="text-xs text-teal-400 font-mono">karadere.one</span>
+            </div>
         </a>
         <a href="https://fb.me/e/7lneUV7mb" target="_blank" class="text-xs font-mono uppercase bg-teal-500/10 border border-teal-500/30 text-teal-400 px-3 py-1.5 rounded-full hover:bg-teal-500/20 transition-all">
             <i class="fa-brands fa-facebook mr-1"></i> Събитие

@@ -27,63 +27,118 @@
     {% include header.html %}
 
     <main class="pt-28 pb-16 min-h-screen">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <header class="mb-6">
-                <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-                    <i class="fa-solid fa-comments text-teal-400"></i>
-                    Питай за Карадере
-                </h1>
-                <p class="mt-2 text-sm text-slate-400">
-                    Отговорите се основават на нормативната база и цитират конкретни разпоредби.
-                    Това не е правен съвет.
-                </p>
-            </header>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Основна колона на чата -->
+                <div class="lg:col-span-3">
+                    <header class="mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+                            <i class="fa-solid fa-comments text-teal-400"></i>
+                            Питай за Карадере
+                        </h1>
+                        <p class="mt-2 text-sm text-slate-400">
+                            Отговорите се основават на нормативната база и цитират конкретни разпоредби.
+                            Това не е правен съвет.
+                        </p>
+                    </header>
 
-            <!-- data-endpoint: URL на Edge Function `chat`. Празно = чатът е
-                 изключен (страницата показва съобщение). Попълва се при деплой. -->
-            <div id="chat-root"
-                 class="chat-root"
-                 data-endpoint="{{ site.chat.endpoint }}">
+                    <!-- data-endpoint: URL на Edge Function `chat`. Празно = чатът е
+                         изключен (страницата показва съобщение). Попълва се при деплой. -->
+                    <div id="chat-root"
+                         class="chat-root"
+                         data-endpoint="{{ site.chat.endpoint }}">
 
-                <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Разговор"></div>
+                        <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Разговор"></div>
 
-                <div id="chat-sources" class="chat-sources hidden" aria-label="Цитирани разпоредби"></div>
+                        <div id="chat-sources" class="chat-sources hidden" aria-label="Цитирани разпоредби"></div>
 
-                <p id="chat-status" class="chat-status" role="status"></p>
+                        <p id="chat-status" class="chat-status" role="status"></p>
 
-                <form id="chat-form" class="chat-form" autocomplete="off">
-                    <label for="chat-input" class="sr-only">Въпрос</label>
-                    <textarea id="chat-input"
-                              class="chat-input"
-                              rows="1"
-                              maxlength="2000"
-                              placeholder="Напр.: Какво забранява Заповед № РД-354 в защитена зона „Карадере“?"
-                              required></textarea>
-                    <button id="chat-send" type="submit" class="chat-btn chat-btn--send" aria-label="Изпрати">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                    <button id="chat-stop" type="button" class="chat-btn chat-btn--stop hidden" aria-label="Спри">
-                        <i class="fa-solid fa-stop"></i>
-                    </button>
-                </form>
+                        <form id="chat-form" class="chat-form" autocomplete="off">
+                            <label for="chat-input" class="sr-only">Въпрос</label>
+                            <textarea id="chat-input"
+                                      class="chat-input"
+                                      rows="1"
+                                      maxlength="2000"
+                                      placeholder="Напр.: Какво забранява Заповед № РД-354 в защитена зона „Карадере“?"
+                                      required></textarea>
+                            <button id="chat-send" type="submit" class="chat-btn chat-btn--send" aria-label="Изпрати">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                            <button id="chat-stop" type="button" class="chat-btn chat-btn--stop hidden" aria-label="Спри">
+                                <i class="fa-solid fa-stop"></i>
+                            </button>
+                        </form>
 
-                <p class="chat-hint">
-                    Enter праща · Shift+Enter е нов ред
-                </p>
+                        <p class="chat-hint">
+                            Enter праща · Shift+Enter е нов ред
+                        </p>
 
-                <!-- Cloudflare Turnstile: невидим/управляван widget. Site key е
-                     публичен (не е тайна) и идва от _config.yml. Ако е празен,
-                     widget-ът не се зарежда и бекендът прескача проверката
-                     (локална разработка). -->
-                {% if site.chat.turnstile_site_key and site.chat.turnstile_site_key != "" %}
-                <div id="chat-turnstile"
-                     class="cf-turnstile"
-                     data-sitekey="{{ site.chat.turnstile_site_key }}"
-                     data-action="chat"
-                     data-size="flexible"></div>
-                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-                {% endif %}
+                        <!-- Cloudflare Turnstile: невидим/управляван widget. Site key е
+                             публичен (не е тайна) и идва от _config.yml. Ако е празен,
+                             widget-ът не се зарежда и бекендът прескача проверката
+                             (локална разработка). -->
+                        {% if site.chat.turnstile_site_key and site.chat.turnstile_site_key != "" %}
+                        <div id="chat-turnstile"
+                             class="cf-turnstile"
+                             data-sitekey="{{ site.chat.turnstile_site_key }}"
+                             data-action="chat"
+                             data-size="flexible"></div>
+                        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Странична колона (Десен панел с източници и ресурси) -->
+                <aside class="lg:col-span-1 space-y-6">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-map-location-dot text-teal-400"></i>
+                            Източници и карти
+                        </h2>
+                        <ul class="space-y-3 text-sm">
+                            <li>
+                                <a href="/skorpilovci/" class="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-teal-300 transition-colors border border-slate-700/50">
+                                    <span class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-map text-teal-400"></i>
+                                        Виж карта
+                                    </span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-400"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://natura2000.egov.bg/EsriBg.Natura.Public.Web.App/PublicDownloads/Auto/PS_SCI/BG0000100/BG0000100_PS_11.pdf" target="_blank" rel="noopener" class="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-teal-300 transition-colors border border-slate-700/50">
+<!--                                <a href="https://www.strategy.bg/Files/View.aspx?Id=11244" target="_blank" rel="noopener" class="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-teal-300 transition-colors border border-slate-700/50">-->
+                                    <span class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                                        Заповед № РД-354
+                                    </span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-400"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://natura2000.egov.bg/EsriBg.Natura.Public.Web.App/Home/ProtectedSite?code=BG0000100&siteType=HabitatDirective" target="_blank" rel="noopener" class="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-teal-300 transition-colors border border-slate-700/50">
+                                    <span class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-globe text-sky-400"></i>
+                                        Натура 2000
+                                    </span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-400"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 text-xs text-slate-400 space-y-2">
+                        <p class="font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-teal-400"></i>
+                            Бързи съвети
+                        </p>
+                        <p>
+                            Задавайте конкретни въпроси за забраните, границите и режимите на защита в зоната.
+                        </p>
+                    </div>
+                </aside>
             </div>
 
         </div>
